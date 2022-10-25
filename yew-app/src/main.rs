@@ -8,5 +8,6 @@ fn app() -> Html {
 }
 
 fn main() {
+    // run with trunk serve
     yew::start_app::<App>();
 }
