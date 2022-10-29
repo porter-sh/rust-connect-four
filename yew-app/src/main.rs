@@ -1,5 +1,7 @@
 use yew::prelude::*;
 
+pub mod components;
+
 #[function_component(App)]
 fn app() -> Html {
     html! {
