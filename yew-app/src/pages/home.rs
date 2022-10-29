@@ -1,4 +1,5 @@
 use yew::prelude::*;
+use crate::components;
 
 pub struct Home;
 impl Component for Home {
@@ -9,9 +10,14 @@ impl Component for Home {
         Self
     }
 
-    fn view(&self, _ctx: &Context<Self>) {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         html!{
-            { "TODO" }
+            <>
+                <div>
+                    <button>{"Back"}</button>
+                </div>
+                <components::board::Board />
+            </>
         }
     }
 }

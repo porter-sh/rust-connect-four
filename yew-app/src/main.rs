@@ -1,12 +1,17 @@
 use yew::prelude::*;
+use yew_router::prelude::*;
+use gloo::console::log;
 
 pub mod components;
 pub mod router;
+pub mod pages;
 
 #[function_component(App)]
 fn app() -> Html {
     html! {
-        <components::board::Board />
+        <BrowserRouter>
+            <Switch<router::Route> render={Switch::render(router::switch_route)} />
+        </BrowserRouter>
     }
 }
 

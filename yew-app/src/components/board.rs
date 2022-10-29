@@ -25,7 +25,6 @@ impl Component for Board {
                 {(0..=6).into_iter().map(|num| {
                     html! {<button key={num} onclick={Callback::from(|mouse_event| {})} />}
                 }).collect::<Html>()}
-                <Switch<router::Route> render={Switch::render(router::switch_route)} />
             </>
         }
     }
