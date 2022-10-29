@@ -2,7 +2,7 @@ use yew::{Children, Callback, Component, Html, html, Context, Properties};
 use yew_router::prelude::*;
 use crate::router;
 
-struct Board;
+pub struct Board;
 
 impl Component for Board {
 
