@@ -1,5 +1,6 @@
-use crate::yew::{Children, Callback, Component, Html, html, Context, Properties};
-use crate::Router;
+use yew::{Children, Callback, Component, Html, html, Context, Properties};
+use yew_router::prelude::*;
+use crate::router;
 
 struct Board;
 
@@ -13,24 +14,19 @@ impl Component for Board {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let onmouseover = {
+        /*let onmouseover = {
             Callback::from(|_| ())
         };
         let onmouseout = {
 
-        };
-        let onclick = {
-            Callback::from(|mouse_event| {
-
-            })
-        };
+        };*/
         html! {
             <>
-                {(0..=6).iter().map(|num| {
-                    html! {<button key=num onclick />}
+                {(0..=6).into_iter().map(|num| {
+                    html! {<button key={num} onclick={Callback::from(|mouse_event| {})} />}
                 }).collect::<Html>()}
-                <Switch<Router::Route> render={Switch::render(switch_route)} />
-            <>
+                <Switch<router::Route> render={Switch::render(router::switch_route)} />
+            </>
         }
     }
 

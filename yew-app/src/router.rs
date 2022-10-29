@@ -1,5 +1,4 @@
-pub mod Router {
-
+use yew::{Html, html};
 use yew_router::prelude::*;
 
 pub fn switch_route(route: &Route) -> Html {
@@ -16,12 +15,8 @@ pub fn switch_route(route: &Route) -> Html {
         },
 
 
-        _ => html! {}
+        _ => html! {<></>}
 
-    }
-
-    html! {
-        { "Hello" }
     }
     
 }
@@ -55,6 +50,4 @@ pub enum InGameRoute {
     VersusBot,
     #[at("/game/online-multiplayer")]
     OnlineMultiplayer
-}
-
 }
