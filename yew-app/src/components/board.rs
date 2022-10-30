@@ -1,8 +1,16 @@
 use yew::{Children, Callback, Component, Html, html, Context, Properties};
 use yew_router::prelude::*;
-use crate::router;
+use crate::components::column;
 
-pub struct Board;
+pub struct Board {
+    board: [[Disk; 6]; 7]
+}
+
+pub enum Disk {
+    Empty,
+    P1,
+    P2
+}
 
 impl Component for Board {
 
@@ -10,7 +18,7 @@ impl Component for Board {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        Self
+        Self {board: [[Disk::Empty; 6]; 7]}
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -28,5 +36,4 @@ impl Component for Board {
             </>
         }
     }
-
 }
