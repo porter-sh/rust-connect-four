@@ -14,6 +14,9 @@ pub fn switch_route(route: &Route) -> Html {
         },
         Route::NotFound => html! {
             { "This is not the page you are looking for :( LLLLL" }
+        },
+        Route::NotFoundNeedsRedirect => html! {
+            <Redirect<Route> to={Route::NotFound} />
         }
     }
     
@@ -40,9 +43,11 @@ pub enum Route {
     NewGame,
     #[at("/game/:s")]
     InGame,
-    #[not_found]
     #[at("/404")]
-    NotFound
+    NotFound,
+    #[not_found]
+    #[at("/not_found")]
+    NotFoundNeedsRedirect
 }
 
 #[derive(Clone, Routable, PartialEq)]
