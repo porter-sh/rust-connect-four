@@ -1,5 +1,18 @@
 use yew::prelude::*;
+use yew_router::prelude::History;
+use yew_router::prelude::use_history;
 use crate::components;
+use crate::router;
+
+#[function_component(MyButton)]
+fn my_button() -> Html {
+    let history = use_history().unwrap();
+    html! {
+        <button onclick={
+            Callback::from(move |_| history.push(router::Route::NewGame))
+        }>{ "Back" }</button>
+    }
+}
 
 pub struct Home;
 impl Component for Home {
@@ -11,10 +24,11 @@ impl Component for Home {
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
+        //let history = use_history().unwrap();
         html!{
             <>
                 <div>
-                    <button>{"Back"}</button>
+                    <MyButton />
                 </div>
                 <components::board::Board />
             </>
