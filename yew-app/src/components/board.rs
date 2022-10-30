@@ -1,11 +1,12 @@
 use yew::{Children, Callback, Component, Html, html, Context, Properties};
 use yew_router::prelude::*;
-use crate::components::column;
 
+#[derive(Clone)]
 pub struct Board {
     board: [[Disk; 6]; 7]
 }
 
+#[derive(Clone, Copy)]
 pub enum Disk {
     Empty,
     P1,
