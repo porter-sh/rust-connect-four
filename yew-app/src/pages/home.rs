@@ -9,7 +9,7 @@ fn my_button() -> Html {
     let history = use_history().unwrap();
     html! {
         <button onclick={
-            Callback::from(move |_| history.push(router::Route::NewGame))
+            Callback::from(move |_| history.push(router::Route::LocalMultiplayer))
         }>{ "Back" }</button>
     }
 }

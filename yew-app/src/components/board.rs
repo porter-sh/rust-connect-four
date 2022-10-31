@@ -1,12 +1,15 @@
 use yew::{Children, Callback, Component, Html, html, Context, Properties};
 use yew_router::prelude::*;
+use crate::components::column::*;
 
-#[derive(Clone)]
+use std::cell::RefCell;
+use std::sync::{Mutex, Arc};
+
 pub struct Board {
-    board: [[Disk; 6]; 7]
+    board: RefCell<[[Disk; 6]; 7]>
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Disk {
     Empty,
     P1,
@@ -19,22 +22,18 @@ impl Component for Board {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        Self {board: [[Disk::Empty; 6]; 7]}
+        Self {board: RefCell::new([[Disk::Empty; 6]; 7])}
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        /*let onmouseover = {
-            Callback::from(|_| ())
-        };
-        let onmouseout = {
-
-        };*/
         html! {
-            <>
-                {(0..=6).into_iter().map(|num| {
-                    html! {<button key={num} onclick={Callback::from(|mouse_event| {})} />}
+            <div>
+                {(0..7).into_iter().map(|num| {
+                    html! {
+                        <Column col_num={ num } disks={ RefCell::clone(&self.board) } />
+                    }
                 }).collect::<Html>()}
-            </>
+            </div>
         }
     }
 }

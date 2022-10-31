@@ -8,7 +8,6 @@ pub mod pages;
 
 #[function_component(App)]
 fn app() -> Html {
-    log!("Here");
     html! {
         <BrowserRouter>
             <Switch<router::Route> render={Switch::render(router::switch_route)} />
