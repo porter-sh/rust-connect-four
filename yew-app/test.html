@@ -2,38 +2,51 @@
 
 <head>
     <style>
-        .center {
+        .container {
             /* Center the element */
             margin: auto;
             /* Set the dimensions to be just enough for all the elements it contains */
             width: max-content;
             height: max-content;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
         }
 
         .btn {
             width: 50px;
             height: calc(50px * 6);
             border: 0px;
-            background-color: transparent;
+            background-color: #DDD;
+            grid-row-start: 1;
+        }
+
+        .circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #AAA;
+            border-width: 0px;
         }
 
         .btn:hover {
-            background-color: #AAAAAA;
+            background-color: #BBB;
         }
     </style>
 </head>
 <html lang="en">
 
 <body>
-    <div class="center">
-        <button class="btn"></button>
-        <button class="btn"></button>
-        <button class="btn"></button>
-        <button class="btn"></button>
-        <button class="btn"></button>
-        <button class="btn"></button>
-        <button class="btn"></button>
-    </div>
+    <div class="container">
+        <button class="btn" style="grid-column-start: 1;"></button>
+        <button class="btn" style="grid-column-start: 2;"></button>
+        <button class="btn" style="grid-column-start: 3;"></button>
+        <button class="btn" style="grid-column-start: 4;"></button>
+        <button class="btn" style="grid-column-start: 5;"></button>
+        <button class="btn" style="grid-column-start: 6;"></button>
+        <button class="btn" style="grid-column-start: 7;"></button>
+        <div class="circle" style="grid-column-start: 1; grid-row-start: 1;"></button>
+        </div>
 </body>
 
 </html>
