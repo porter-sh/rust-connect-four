@@ -8,3 +8,4 @@
 ## Random Ideas
  - Let the player select which column to drop a disk into by entering a number.
  - Survival mode !!!
+ - Undo move option (would need to store move history)

@@ -2,6 +2,7 @@ use crate::components::column::*;
 use crate::constants::*;
 use yew::{html, /*Callback, Children,*/ Component, Context, Html /*Properties*/};
 // use yew_router::prelude::*;
+use gloo::console::log;
 
 use std::cell::RefCell;
 
@@ -23,6 +24,7 @@ impl Component for Board {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        log!("NEW BOARD");
         Self {
             board: RefCell::new([[Disk::Empty; BOARD_WIDTH]; BOARD_HEIGHT]),
         }

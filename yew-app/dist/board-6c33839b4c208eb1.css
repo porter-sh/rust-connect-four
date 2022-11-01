@@ -1,5 +1,6 @@
 .board-background {
   border-width: 0px;
+  border-radius: 30px;
   background-color: #AAA;
   margin: auto;
   width: max-content;
