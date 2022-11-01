@@ -30,13 +30,14 @@ impl Component for Column {
                     let col_num = ctx.props().col_num;
                     Callback::from(move |_| {
                         let mut disks = disks.borrow_mut();
-                        let i = 0;
-                        while i < disks.len() {
+                        let mut i = 0;
+                        while i < BOARD_HEIGHT {
                             if disks[i][col_num] == Disk::Empty {
                                 disks[i][col_num] = Disk::P1;
                                 log!("Dropped disk in row {}, col {}.", i, col_num);
                                 return;
                             }
+                            i += 1;
                         }
                     })
                 }></button>
