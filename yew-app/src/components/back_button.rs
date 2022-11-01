@@ -1,12 +1,13 @@
 use yew::{Callback, function_component, html};
 use yew_router::prelude::*;
 use crate::router;
-use gloo::console::error;
+use gloo::console::{log, error};
 
 #[function_component(BackButton)]
 pub fn back_button() -> Html {
     
     if let Some(history) = use_history() {
+        log!("Got this far.");
         if let Some (route) = history.location().route::<router::Route>() {
             return html! {
 

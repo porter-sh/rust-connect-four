@@ -10,7 +10,7 @@ fn my_button() -> Html {
     html! {
         <button onclick={
             Callback::from(move |_| history.push(router::Route::LocalMultiplayer))
-        }>{ "Back" }</button>
+        }>{ "Local-Multiplayer" }</button>
     }
 }
 
