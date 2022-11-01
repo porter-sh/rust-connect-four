@@ -1,0 +1,33 @@
+.btn {
+  border-width: 0px;
+  background-color: #0F0;
+  opacity: 0.5;
+  width: 50px;
+  height: 300px;
+  grid-row-start: 1;
+  grid-row-end: 7;
+}
+
+.btn:hover {
+  opacity: 0.25;
+}
+
+.disk-p2, .disk-p1, .disk-empty {
+  border-width: 0px;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  margin: 10px;
+}
+
+.disk-empty {
+  background-color: #000;
+}
+
+.disk-p1 {
+  background-color: #F00;
+}
+
+.disk-p2 {
+  background-color: #FF0;
+}

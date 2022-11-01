@@ -1,8 +1,32 @@
-.column-container
-    button
-        width: 100%
-        height: 100%
-        border: none
-        background-color: transparent 
-    button:hover
-        background-color: #101010
+@use 'base'
+
+.btn
+    border-width: 0px
+    background-color: #0F0
+    opacity: 0.5
+    width: base.$column-width
+    height: base.$column-width * 6
+    grid-row-start: 1
+    grid-row-end: 7
+
+.btn:hover
+    opacity: 0.25
+
+%circle-shared
+    border-width: 0px
+    border-radius: 50%
+    width: base.$disk-diameter
+    height: base.$disk-diameter
+    margin: calc((base.$column-width - base.$disk-diameter) / 2)
+
+.disk-empty // div for empty slots
+    @extend %circle-shared
+    background-color: base.$empty-disk-color
+
+.disk-p1 // div for player 1 disks
+    @extend %circle-shared
+    background-color: base.$p1-disk-color
+
+.disk-p2 // div for player 2 disks
+    @extend %circle-shared
+    background-color: base.$p2-disk-color

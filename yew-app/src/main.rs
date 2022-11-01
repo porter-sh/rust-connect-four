@@ -1,10 +1,12 @@
+#[allow(unused)]
+use gloo::console::log;
 use yew::prelude::*;
 use yew_router::prelude::*;
-use gloo::console::log;
 
 pub mod components;
-pub mod router;
+pub mod constants;
 pub mod pages;
+pub mod router;
 
 #[function_component(App)]
 fn app() -> Html {

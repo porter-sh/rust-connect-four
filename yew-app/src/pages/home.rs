@@ -1,8 +1,8 @@
-use yew::prelude::*;
-use yew_router::prelude::History;
-use yew_router::prelude::use_history;
 use crate::components;
 use crate::router;
+use yew::prelude::*;
+use yew_router::prelude::use_history;
+use yew_router::prelude::History;
 
 #[function_component(MyButton)]
 fn my_button() -> Html {
@@ -25,7 +25,7 @@ impl Component for Home {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         //let history = use_history().unwrap();
-        html!{
+        html! {
             <>
                 <div>
                     <MyButton />
