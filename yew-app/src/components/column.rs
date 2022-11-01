@@ -1,11 +1,10 @@
-use crate::components::board_state::{BoardState, DiskColor, DiskData};
 use crate::constants::*;
+use crate::util::board_state::BoardState;
+use crate::util::util::{DiskColor, DiskData};
 use gloo::console::log;
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
-use yew_router::prelude::*;
-use yew_router::scope_ext::HistoryHandle;
 
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Properties, PartialEq)]
@@ -26,7 +25,7 @@ impl Component for Column {
     type Message = ColumnMessages;
     type Properties = ColumnProperties;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         Self
     }
 

@@ -1,9 +1,8 @@
-use crate::components::board_state::BoardState;
 use crate::components::column::*;
 use crate::constants::*;
 use crate::router;
-use gloo::console::log;
-use yew::{html, /*Callback, Children,*/ Component, Context, Html, Properties};
+use crate::util::board_state::BoardState;
+use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 

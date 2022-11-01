@@ -1,50 +1,6 @@
 use crate::constants::*;
-use gloo::console::log;
+use crate::util::util::{DiskColor, DiskData, Disks};
 use std::cmp::min;
-use std::fmt;
-
-pub type Disks = [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT];
-
-pub struct DiskData {
-    row: usize,
-    col: usize,
-    color: DiskColor,
-    left_range: usize,
-    right_range: usize,
-    up_range: usize,
-    down_range: usize,
-}
-
-impl DiskData {
-    pub fn new(row: usize, col: usize, color: DiskColor) -> Self {
-        Self {
-            row,
-            col,
-            color,
-            left_range: min(3, col),
-            right_range: min(3, BOARD_WIDTH - col - 1),
-            up_range: min(3, row),
-            down_range: min(3, BOARD_HEIGHT - row - 1),
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum DiskColor {
-    Empty,
-    P1,
-    P2,
-}
-
-impl DiskColor {
-    pub fn to_str(&self) -> &str {
-        match self {
-            DiskColor::Empty => "empty",
-            DiskColor::P1 => "p1",
-            DiskColor::P2 => "p2",
-        }
-    }
-}
 
 #[derive(PartialEq)]
 pub struct BoardState {
@@ -72,26 +28,6 @@ impl BoardState {
         {
             return true;
         }
-        // log!(
-        //     "Checking Winner",
-        //     Self::check_lateral(&self, &new_disk),
-        //     Self::check_right_diag(&self, &new_disk),
-        //     Self::check_left_diag(&self, &new_disk)
-        // );
-        // log!(
-        //     "row:",
-        //     new_disk.row,
-        //     "col:",
-        //     new_disk.col,
-        //     "left_range:",
-        //     new_disk.left_range,
-        //     "right_range:",
-        //     new_disk.right_range,
-        //     "up_range:",
-        //     new_disk.up_range,
-        //     "down_range:",
-        //     new_disk.down_range
-        // );
 
         if Self::check_lateral(&self, &new_disk)
             || Self::check_right_diag(&self, &new_disk)

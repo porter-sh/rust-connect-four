@@ -5,6 +5,7 @@ pub mod components;
 pub mod constants;
 pub mod pages;
 pub mod router;
+pub mod util;
 
 #[function_component(App)]
 fn app() -> Html {
