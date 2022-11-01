@@ -8,7 +8,22 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 pub struct Board {
-    board: Rc<RefCell<Disks>>,
+    board: Rc<RefCell<BoardState>>,
+}
+
+#[derive(PartialEq)]
+pub struct BoardState {
+    pub board_state: Disks,
+    pub current_player: Disk
+}
+
+impl Default for BoardState {
+    fn default() -> Self {
+        Self {
+            board_state: [[Disk::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
+            current_player: Disk::P1
+        }
+    }
 }
 
 pub type Disks = [[Disk; BOARD_WIDTH]; BOARD_HEIGHT];
@@ -27,12 +42,11 @@ impl Component for Board {
     fn create(_ctx: &Context<Self>) -> Self {
         log!("NEW BOARD");
         Self {
-            board: Rc::new(RefCell::new([[Disk::Empty; BOARD_WIDTH]; BOARD_HEIGHT])),
+            board: Rc::new(RefCell::new(Default::default())),
         }
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
-        log!("In BOARD, ", self.board.borrow()[0][0] == Disk::Empty);
         html! {
             <div class={"board-background"}>
                 {(0..BOARD_WIDTH).into_iter().map(|num| {

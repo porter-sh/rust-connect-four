@@ -1,8 +1,6 @@
-use crate::components::board::{Disk, Disks};
+use crate::components::board::{BoardState, Disk};
 use crate::constants::*;
-use yew::{classes, html, Callback, /*Children,*/ Component, Context, Html, Properties};
-// use yew_router::prelude::*;
-use gloo::console::log;
+use yew::{Callback, classes, html, Component, Context, Html, MouseEvent, Properties};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -10,7 +8,7 @@ use std::cell::RefCell;
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
     pub col_num: usize,
-    pub disks: Rc<RefCell<Disks>>,
+    pub disks: Rc<RefCell<BoardState>>,
 }
 
 pub enum ColumnMessages {
@@ -36,46 +34,18 @@ impl Component for Column {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        /*let disks = RefCell::clone(&ctx.props().disks);
-        let col_num = ctx.props().col_num;
-        let onclick = ctx.link().callback(move |_| {
-            let mut disks = disks.borrow_mut();
-            let mut i = 0;
-            log!(disks[0][0] == Disk::Empty);
-            while i < BOARD_HEIGHT {
-                if disks[i][col_num] == Disk::Empty {
-                    disks[i][col_num] = Disk::P1;
-                    log!(disks[0][0] == Disk::Empty);
-                    log!(format!("Dropped disk in row {}, col {}.", i, col_num));
-                    return ColumnMessages::DiskDropped;
-                }
-                i += 1;
-            }
-            ColumnMessages::NoChange
-        });*/
         html! {
             <>
-                <button class={"btn"} style={format!("grid-column-start: {}", ctx.props().col_num + 1)} onclick={
-                    let disks = Rc::clone(&ctx.props().disks);
-                    let col_num = ctx.props().col_num;
-                    Callback::from(move |_| {
-                        {
-                            let mut disks = disks.borrow_mut();
-                            let mut i = 0;
-                            log!(disks[0][0] == Disk::Empty);
-                            while i < BOARD_HEIGHT {
-                                if disks[i][col_num] == Disk::Empty {
-                                    disks[i][col_num] = Disk::P1;
-                                    log!(format!("Dropped disk in row {}, col {}.\n", i, col_num));
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        }
-                    })
-                }></button>
+                <button
+                    class={"btn"}
+                    style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
+                    onclick={self.create_onclick(ctx)}
+                />
                 {(0..BOARD_HEIGHT).into_iter().map(|row_num| html! {
-                    <div class={classes!(ctx.props().style_of_disk(row_num))} style={format!("grid-column-start: {}; grid-row-start: {};", ctx.props().col_num + 1, row_num + 1)} />
+                    <div
+                        class={classes!(ctx.props().style_of_disk(row_num))}
+                        style={format!("grid-column-start: {}; grid-row-start: {};", ctx.props().col_num + 1, row_num + 1)}
+                    />
                 }).collect::<Html>()}
             </>
         }
@@ -83,12 +53,42 @@ impl Component for Column {
 }
 
 impl ColumnProperties {
+
     fn style_of_disk(&self, row: usize) -> String {
-        match self.disks.borrow()[row][self.col_num] {
+        match self.disks.borrow().board_state[row][self.col_num] {
             Disk::Empty => "disk-empty",
             Disk::P1 => "disk-p1",
             Disk::P2 => "disk-p2",
-        }
-        .to_string()
+        }.to_string()
     }
+
+}
+
+impl Column {
+
+    fn create_onclick(&self, ctx: &Context<Self>) -> Callback<MouseEvent> {
+        let board = Rc::clone(&ctx.props().disks);
+        let col_num = ctx.props().col_num;
+        ctx.link().callback(move |_| {
+            let disks = &mut board.borrow_mut();
+            let mut i = BOARD_HEIGHT - 1;
+            loop {
+                if disks.board_state[i][col_num] == Disk::Empty {
+                    (disks.board_state[i][col_num], disks.current_player) = if disks.current_player == Disk::P1 {
+                        (Disk::P1, Disk::P2)
+                    } else {
+                        (Disk::P2, Disk::P1)
+                    };
+                    return ColumnMessages::DiskDropped;
+                }
+                if i == 0 {
+                    break;
+                } else {
+                    i -= 1;
+                }
+            }
+            ColumnMessages::NoChange
+        })
+    }
+
 }
