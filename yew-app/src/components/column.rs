@@ -39,17 +39,11 @@ impl Component for Column {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-                <button
-                    class={"btn"}
+                {if ctx.props().in_game {html!{<button
+                    class={ "btn" }
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
-                    onclick={
-                        if ctx.props().in_game {
-                            self.create_onclick(ctx)
-                        } else {
-                            ctx.link().callback(|_| ColumnMessages::NoChange)
-                        }
-                    }
-                />
+                    onclick={ self.create_onclick(ctx) }
+                />}} else {html!{}}}
                 {(0..BOARD_HEIGHT).into_iter().map(|row_num| html! {
                     <div
                         class={classes!(ctx.props().style_of_disk(row_num))}
