@@ -1,14 +1,12 @@
-use yew::{Callback, function_component, html};
-use yew_router::prelude::*;
 use crate::router;
-use gloo::console::{log, error};
+use gloo::console::{error, log};
+use yew::{function_component, html, Callback};
+use yew_router::prelude::*;
 
 #[function_component(BackButton)]
 pub fn back_button() -> Html {
-    
     if let Some(history) = use_history() {
-        log!("Got this far.");
-        if let Some (route) = history.location().route::<router::Route>() {
+        if let Some(route) = history.location().route::<router::Route>() {
             return html! {
 
                 <button
@@ -20,13 +18,12 @@ pub fn back_button() -> Html {
                     }
                 />
 
-            }
+            };
         }
     }
-    
+
     error!("Error Rendering Button");
     html! {
         <button>{ "Error Rendering Button" }</button>
     }
-
 }

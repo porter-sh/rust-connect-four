@@ -1,12 +1,10 @@
-use yew::{Html, html};
+use yew::{html, Html};
 use yew_router::prelude::*;
 
 use crate::pages::home::Home;
 
 pub fn switch_route(route: &Route) -> Html {
-
     match route {
-
         Route::Home => html! {<Home />},
         Route::LocalMultiplayer => html! { {"TODO: Local Multiplayer"} },
         Route::VersusBot => html! { {"TODO: VersusBot"} },
@@ -16,9 +14,8 @@ pub fn switch_route(route: &Route) -> Html {
         },
         Route::NotFoundNeedsRedirect => html! {
             <Redirect<Route> to={Route::NotFound} />
-        }
+        },
     }
-    
 }
 
 #[derive(Clone, Routable, PartialEq)]
@@ -35,5 +32,5 @@ pub enum Route {
     NotFound,
     #[not_found]
     #[at("/not_found")]
-    NotFoundNeedsRedirect
+    NotFoundNeedsRedirect,
 }

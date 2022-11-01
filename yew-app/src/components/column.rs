@@ -1,18 +1,22 @@
-use crate::components::board::{BoardState, Disk};
+use crate::components::board_state::{BoardState, DiskColor, DiskData};
 use crate::constants::*;
-use yew::{Callback, classes, html, Component, Context, Html, MouseEvent, Properties};
+use gloo::console::log;
+use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
+use yew_router::prelude::*;
+use yew_router::scope_ext::HistoryHandle;
 
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
-use std::cell::RefCell;
 
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
     pub col_num: usize,
     pub disks: Rc<RefCell<BoardState>>,
+    pub in_game: bool,
 }
 
 pub enum ColumnMessages {
-    DiskDropped,
+    Rerender,
     NoChange,
 }
 
@@ -22,13 +26,13 @@ impl Component for Column {
     type Message = ColumnMessages;
     type Properties = ColumnProperties;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        match _msg {
-            ColumnMessages::DiskDropped => true,
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            ColumnMessages::Rerender => true,
             _ => false,
         }
     }
@@ -39,7 +43,13 @@ impl Component for Column {
                 <button
                     class={"btn"}
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
-                    onclick={self.create_onclick(ctx)}
+                    onclick={
+                        if ctx.props().in_game {
+                            self.create_onclick(ctx)
+                        } else {
+                            ctx.link().callback(|_| ColumnMessages::NoChange)
+                        }
+                    }
                 />
                 {(0..BOARD_HEIGHT).into_iter().map(|row_num| html! {
                     <div
@@ -53,33 +63,36 @@ impl Component for Column {
 }
 
 impl ColumnProperties {
-
     fn style_of_disk(&self, row: usize) -> String {
         match self.disks.borrow().board_state[row][self.col_num] {
-            Disk::Empty => "disk-empty",
-            Disk::P1 => "disk-p1",
-            Disk::P2 => "disk-p2",
-        }.to_string()
+            DiskColor::Empty => "disk-empty",
+            DiskColor::P1 => "disk-p1",
+            DiskColor::P2 => "disk-p2",
+        }
+        .to_string()
     }
-
 }
 
 impl Column {
-
     fn create_onclick(&self, ctx: &Context<Self>) -> Callback<MouseEvent> {
         let board = Rc::clone(&ctx.props().disks);
         let col_num = ctx.props().col_num;
         ctx.link().callback(move |_| {
             let disks = &mut board.borrow_mut();
+            if disks.game_won {
+                return ColumnMessages::NoChange;
+            }
             let mut i = BOARD_HEIGHT - 1;
             loop {
-                if disks.board_state[i][col_num] == Disk::Empty {
-                    (disks.board_state[i][col_num], disks.current_player) = if disks.current_player == Disk::P1 {
-                        (Disk::P1, Disk::P2)
-                    } else {
-                        (Disk::P2, Disk::P1)
-                    };
-                    return ColumnMessages::DiskDropped;
+                if disks.board_state[i][col_num] == DiskColor::Empty {
+                    log!(disks.check_winner(DiskData::new(i, col_num, disks.current_player)));
+                    (disks.board_state[i][col_num], disks.current_player) =
+                        if disks.current_player == DiskColor::P1 {
+                            (DiskColor::P1, DiskColor::P2)
+                        } else {
+                            (DiskColor::P2, DiskColor::P1)
+                        };
+                    return ColumnMessages::Rerender;
                 }
                 if i == 0 {
                     break;
@@ -90,5 +103,4 @@ impl Column {
             ColumnMessages::NoChange
         })
     }
-
 }

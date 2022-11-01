@@ -1,20 +1,9 @@
-use crate::components;
+use crate::components::game_button;
 use crate::router;
 use yew::prelude::*;
-use yew_router::prelude::use_history;
-use yew_router::prelude::History;
-
-#[function_component(MyButton)]
-fn my_button() -> Html {
-    let history = use_history().unwrap();
-    html! {
-        <button onclick={
-            Callback::from(move |_| history.push(router::Route::LocalMultiplayer))
-        }>{ "Local-Multiplayer" }</button>
-    }
-}
 
 pub struct Home;
+
 impl Component for Home {
     type Message = ();
     type Properties = ();
@@ -28,9 +17,8 @@ impl Component for Home {
         html! {
             <>
                 <div>
-                    <MyButton />
+                    <game_button::GameButton text={"Local-Multiplayer"} route={router::Route::LocalMultiplayer} />
                 </div>
-                <components::board::Board />
             </>
         }
     }

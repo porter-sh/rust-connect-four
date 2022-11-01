@@ -1,4 +1,5 @@
 pub mod back_button;
 pub mod board;
-pub mod game_button;
+pub mod board_state;
 pub mod column;
+pub mod game_button;
