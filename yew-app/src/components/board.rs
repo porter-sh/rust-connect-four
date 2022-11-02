@@ -81,6 +81,27 @@ impl Component for Board {
                         } />
                     }
                 }).collect::<Html>()}
+                {
+                    if let Some(location) = ctx.link().location() {
+                        if let Some(route) = location.route::<router::Route>() {
+                            match route {
+                                router::Route::Home => {
+                                        html!{
+                                            <div class={"menu-container"}>
+                                                <p>{"Menu"}</p>
+                                                <btn class="menu-btn">{"test-btn"}</btn>
+                                            </div>
+                                        }
+                                    },
+                                _ => html! {}
+                            }
+                        } else {
+                            html! {}
+                        }
+                    } else{
+                        html! {}
+                    }
+                }
             </div>
         }
     }
