@@ -57,51 +57,27 @@ impl Component for Board {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
         html! {
             <div class={"board-background"}>
                 {(0..BOARD_WIDTH).into_iter().map(|num| {
                     html! {
                         <Column col_num={ num } disks={ Rc::clone(&self.board) } in_game={
-                            if let Some(location) = ctx.link().location() {
-                                if let Some(route) = location.route::<router::Route>() {
-                                    match route {
-                                        router::Route::LocalMultiplayer
-                                            | router::Route::VersusBot
-                                            | router::Route::OnlineMultiplayer => {
-                                                true
-                                            },
-                                        _ => false
-                                    }
-                                } else {
-                                    false
+                            if let Some(route) = ctx.link().route::<router::Route>() {
+                                match route {
+                                    router::Route::LocalMultiplayer
+                                        | router::Route::VersusBot
+                                        | router::Route::OnlineMultiplayer => {
+                                            true
+                                        },
+                                    _ => false
                                 }
                             } else{
                                 false
                             }
-                        } />
+                        } rerender_board_callback={rerender_board_callback.clone()} />
                     }
                 }).collect::<Html>()}
-                {
-                    if let Some(location) = ctx.link().location() {
-                        if let Some(route) = location.route::<router::Route>() {
-                            match route {
-                                router::Route::Home => {
-                                        html!{
-                                            <div class={"menu-container"}>
-                                                <p>{"Menu"}</p>
-                                                <btn class="menu-btn">{"test-btn"}</btn>
-                                            </div>
-                                        }
-                                    },
-                                _ => html! {}
-                            }
-                        } else {
-                            html! {}
-                        }
-                    } else{
-                        html! {}
-                    }
-                }
             </div>
         }
     }

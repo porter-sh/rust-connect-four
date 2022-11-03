@@ -12,10 +12,11 @@ pub struct ColumnProperties {
     pub col_num: usize,
     pub disks: Rc<RefCell<BoardState>>,
     pub in_game: bool,
+    pub rerender_board_callback: Callback<MouseEvent>,
 }
 
 pub enum ColumnMessages {
-    Rerender,
+    Rerender(MouseEvent),
     NoChange,
 }
 
@@ -29,9 +30,14 @@ impl Component for Column {
         Self
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            ColumnMessages::Rerender => true,
+            ColumnMessages::Rerender(event) => {
+                if ctx.props().disks.borrow().game_won {
+                    ctx.props().rerender_board_callback.emit(event);
+                }
+                true
+            }
             _ => false,
         }
     }
@@ -39,7 +45,7 @@ impl Component for Column {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-                {if ctx.props().in_game {html!{<button
+                {if ctx.props().in_game && !ctx.props().disks.borrow().game_won {html!{<button
                     class={ "btn" }
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                     onclick={ self.create_onclick(ctx) }
@@ -70,7 +76,7 @@ impl Column {
     fn create_onclick(&self, ctx: &Context<Self>) -> Callback<MouseEvent> {
         let board = Rc::clone(&ctx.props().disks);
         let col_num = ctx.props().col_num;
-        ctx.link().callback(move |_| {
+        ctx.link().callback(move |event| {
             let disks = &mut board.borrow_mut();
             if disks.game_won {
                 return ColumnMessages::NoChange;
@@ -78,14 +84,16 @@ impl Column {
             let mut i = BOARD_HEIGHT - 1;
             loop {
                 if disks.board_state[i][col_num] == DiskColor::Empty {
-                    log!(disks.check_winner(DiskData::new(i, col_num, disks.current_player)));
+                    if disks.check_winner(DiskData::new(i, col_num, disks.current_player)) {
+                        disks.game_won = true;
+                    }
                     (disks.board_state[i][col_num], disks.current_player) =
                         if disks.current_player == DiskColor::P1 {
                             (DiskColor::P1, DiskColor::P2)
                         } else {
                             (DiskColor::P2, DiskColor::P1)
                         };
-                    return ColumnMessages::Rerender;
+                    return ColumnMessages::Rerender(event);
                 }
                 if i == 0 {
                     break;
