@@ -6,9 +6,9 @@ use crate::pages::home::Home;
 pub fn switch_route(route: &Route) -> Html {
     match route {
         Route::Home => html! {<Home />},
-        Route::LocalMultiplayer => html! { {"TODO: Local Multiplayer"} },
-        Route::VersusBot => html! { {"TODO: VersusBot"} },
-        Route::OnlineMultiplayer => html! { {"TODO: Online Multiplayer"} },
+        Route::LocalMultiplayer => html! {},
+        Route::VersusBot => html! {},
+        Route::OnlineMultiplayer => html! {},
         Route::NotFound => html! {
             { "This is not the page you are looking for :( LLLLL" }
         },

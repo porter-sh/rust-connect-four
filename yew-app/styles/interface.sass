@@ -1,0 +1,61 @@
+@use 'base'
+
+.menu-txt
+    font-size: 40px
+    color: #000
+
+.menu-container
+    position: absolute
+    margin: auto
+    margin-top: 100px
+    width: base.$menu-width
+    height: max-content
+    background-color: base.$menu-color
+    border-width: 0px
+    border-color: #000
+    border-radius: 20px
+    border-style: solid
+    left: 0px
+    right: 0px
+    text-align: center
+    box-shadow: 0px 0px 50px -20px #000
+
+.control-container
+    margin: auto
+    margin-top: 25px
+    width: base.$column-width * 7
+    height: max-content
+    background: transparent
+    padding: 0px
+
+%interface-btn
+    background-color: base.$interface-btn-color
+    border-style: none
+    box-shadow: none
+    transition: 0.3s
+    border-radius: 20px
+    padding: 5px
+
+.menu-btn
+    @extend %interface-btn
+    display: block
+    margin: auto
+    margin-top: 20px
+    width: 45%
+
+.control-btn
+    @extend %interface-btn
+    display: inline-block
+    margin: 0px
+    width: max-content
+    padding-inline: 10px
+
+%interface-btn-hover
+    background-color: base.$interface-btn-hover-color
+    box-shadow: 0px 0px 20px -2px #000
+
+.menu-btn:hover
+    @extend %interface-btn-hover
+
+.control-btn:hover
+    @extend %interface-btn-hover

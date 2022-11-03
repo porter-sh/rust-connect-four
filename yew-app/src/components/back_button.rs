@@ -9,14 +9,16 @@ pub fn back_button() -> Html {
         if let Some(route) = history.location().route::<router::Route>() {
             return html! {
 
-                <button
+                <button class="control-btn"
                     hidden={
                         route == router::Route::Home
                     }
                     onclick={
                         Callback::from(move |_| history.push(router::Route::Home))
                     }
-                />
+                >
+                    { "Quit Game" }
+                </button>
 
             };
         }

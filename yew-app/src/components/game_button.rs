@@ -14,7 +14,7 @@ pub fn game_button(props: &Props) -> Html {
     if let Some(history) = use_history() {
         let route = props.route.clone();
         return html! {
-            <button onclick={
+            <button class="menu-btn" onclick={
                 Callback::from(move |_| history.push(route.clone()))
             }>{ props.text }</button>
         };

@@ -11,9 +11,11 @@ pub mod util;
 fn app() -> Html {
     html! {
         <BrowserRouter>
-        <components::back_button::BackButton />
-        <Switch<router::Route> render={Switch::render(router::switch_route)} />
-        <components::board::Board />
+            <Switch<router::Route> render={Switch::render(router::switch_route)} />
+            <components::board::Board />
+            <div class="control-container">
+                <components::back_button::BackButton />
+            </div>
         </BrowserRouter>
     }
 }
