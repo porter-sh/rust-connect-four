@@ -13,6 +13,7 @@ The goal of this project is to make a connect-four game in Rust. We want to have
  - Full website layout with routing and and UI.
  - Directive on-screen messages, like "red wins", or "yellow's turn".
  - Game mechanics (placing pieces, stop once someone wins, etc.).
+ - Undo button to revert the board state (even to the start of the game).
 #### Checkpoint 2 (11/30)
 Almost done:
  - Online Multiplayer
