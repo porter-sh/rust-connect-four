@@ -9,9 +9,13 @@ pub fn back_button() -> Html {
         if let Some(route) = history.location().route::<router::Route>() {
             return html! {
 
-                <button class="control-btn"
-                    hidden={
-                        route == router::Route::Home
+                <button class=
+                    {
+                        if route == router::Route::Home {
+                            "control-hidden"
+                        } else {
+                            "control-btn"
+                        }
                     }
                     onclick={
                         Callback::from(move |_| history.push(router::Route::Home))
