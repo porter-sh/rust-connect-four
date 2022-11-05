@@ -1,12 +1,29 @@
+use futures::stream::SplitSink;
+use futures::{SinkExt, StreamExt};
+use gloo_net::websocket::{futures::WebSocket, Message};
+
 use crate::constants::*;
 use crate::util::util::{DiskColor, DiskData, Disks};
 use std::cmp::min;
 
-#[derive(PartialEq)]
 pub struct BoardState {
     pub board_state: Disks,
     pub current_player: DiskColor,
     pub game_won: bool,
+    pub socket_writer: Option<SplitSink<WebSocket, Message>>,
+}
+
+impl PartialEq for BoardState {
+    fn eq(&self, other: &Self) -> bool {
+        self.board_state == other.board_state
+            && self.current_player == other.current_player
+            && self.game_won == other.game_won
+            && match (&self.socket_writer, &other.socket_writer) {
+                (Some(_), Some(_)) => true,
+                (None, None) => true,
+                _ => false,
+            }
+    }
 }
 
 impl Default for BoardState {
@@ -15,6 +32,7 @@ impl Default for BoardState {
             board_state: [[DiskColor::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
             current_player: DiskColor::P1,
             game_won: false,
+            socket_writer: None,
         }
     }
 }

@@ -1,26 +1,39 @@
-use core::panic;
-use std::io::Write;
-use std::net::{TcpListener, TcpStream};
-use std::thread;
+use websocket::server::sync::Server;
+use websocket::server::upgrade::WsUpgrade;
+use websocket::sync::server::upgrade::Buffer;
+use websocket::Message;
 
-fn handle_client(mut stream: TcpStream) {
-    println!("New client: {:?}", stream);
-    stream.write(b"This is a message from the server.").unwrap();
+use std::net::TcpStream;
+use std::thread;
+use std::time::Duration;
+
+const PORT: u16 = 8081;
+
+fn handle_connection(incoming: WsUpgrade<TcpStream, Option<Buffer>>) {
+    if let Ok(mut client) = incoming.accept() {
+        match client.send_message(&Message::text("Poggers!!!")) {
+            Ok(_) => println!("Sent message to client."),
+            Err(e) => println!("{}", e),
+        };
+        thread::sleep(Duration::new(5, 0));
+        match client.send_message(&Message::text("Poggers!!!")) {
+            Ok(_) => println!("Sent message to client."),
+            Err(e) => println!("{}", e),
+        };
+        match client.shutdown() {
+            Ok(_) => println!("Shutdown connection to client."),
+            Err(e) => println!("{}", e),
+        };
+    }
+    println!("Exiting handle_connection thread.");
 }
 
 fn main() {
-    if let Ok(listener) = TcpListener::bind("127.0.0.1:8081") {
-        println!("Listening on port 8081");
-        for stream in listener.incoming() {
-            if let Ok(stream) = stream {
-                thread::spawn(move || {
-                    handle_client(stream);
-                });
-            } else {
-                println!("Error. Invalid stream: {:?}", stream.unwrap_err());
-            }
+    if let Ok(mut listener) = Server::bind(format!("127.0.0.1:{}", PORT)) {
+        while let Ok(incoming) = listener.accept() {
+            thread::spawn(move || handle_connection(incoming));
         }
     } else {
-        panic!("Error. Could not bind to port 8081.");
+        eprintln!("Failed to bind to port {}.", PORT);
     }
 }
