@@ -2,17 +2,13 @@ use crate::components::game_button;
 use crate::router;
 use yew::prelude::*;
 
+use futures::{SinkExt, StreamExt};
 use gloo::console::log;
-use gloo_net::websocket::futures::WebSocket;
+use gloo_net::websocket::{futures::WebSocket, Message};
+use wasm_bindgen_futures::spawn_local;
 
 #[function_component(Home)]
 pub fn home() -> Html {
-    if let Ok(ws) = WebSocket::open("ws://127.0.0.1:8081") {
-        log!("connected");
-    } else {
-        log!("Failed to connect to server.");
-    }
-
     html! {
         <>
             <div class="background-blur" />

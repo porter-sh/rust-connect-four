@@ -6,6 +6,13 @@ use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 
+use yew::MouseEvent;
+
+use futures::{SinkExt, StreamExt};
+use gloo::console::log;
+use gloo_net::websocket::{futures::WebSocket, Message};
+use wasm_bindgen_futures::spawn_local;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -24,6 +31,22 @@ impl Component for Board {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
+        let cb: yew::Callback<MouseEvent> = ctx.link().callback(|_| {
+            log!("In callback");
+            BoardMessages::Rerender
+        });
+
+        let mut ws = WebSocket::open("ws://127.0.0.1:8081").unwrap();
+        let (mut write, mut read) = ws.split();
+
+        spawn_local(async move {
+            while let Some(msg) = read.next().await {
+                cb.emit(MouseEvent::new("mousedown").unwrap());
+                log!(format!("1. {:?}", msg))
+            }
+            log!("WebSocket Closed")
+        });
+
         let board = Rc::new(RefCell::new(Default::default()));
         let history_handle = {
             let board = Rc::clone(&board);
@@ -35,6 +58,9 @@ impl Component for Board {
                             | router::Route::VersusBot
                             | router::Route::OnlineMultiplayer => {
                                 *board.borrow_mut() = Default::default();
+
+                                let mut ws = WebSocket::open("ws://127.0.0.1:8081").unwrap();
+                                let (mut write, mut read) = ws.split();
                             }
                             _ => {}
                         }
@@ -51,7 +77,10 @@ impl Component for Board {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            BoardMessages::Rerender => true,
+            BoardMessages::Rerender => {
+                log!("Callback does work.");
+                true
+            }
             _ => false,
         }
     }
