@@ -1,10 +1,7 @@
-use crate::router;
 use crate::util::board_state::BoardState;
 use crate::util::util::DiskColor;
 use crate::constants::*;
-use gloo::console::{error, log};
 use yew::{function_component, html, Callback, MouseEvent, Properties};
-use yew_router::prelude::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,14 +24,18 @@ pub fn undo_button(props: &BackButtonProperties) -> Html {
                 {
 
                     let mut disks = board.borrow_mut();
+                    if disks.num_moves == 0 { return; }
+
                     disks.game_won = false;
 
                     disks.current_player = if disks.current_player == DiskColor::P1 {DiskColor::P2} else {DiskColor::P1};
 
                     disks.num_moves -= 1;
 
-                    let col = disks.game_history[disks.num_moves];
-                    for row in (0..BOARD_HEIGHT).rev() {
+                    let num_moves = disks.num_moves;
+
+                    let col = disks.game_history[num_moves];
+                    for row in 0..BOARD_HEIGHT {
 
                         if disks.board_state[row][col] != DiskColor::Empty {
                             disks.board_state[row][col] = DiskColor::Empty;
@@ -46,7 +47,6 @@ pub fn undo_button(props: &BackButtonProperties) -> Html {
                 }
 
                 rerender_board_callback.emit(MouseEvent::new("mousedown").unwrap());
-
             })
         }>
             { "Undo" }

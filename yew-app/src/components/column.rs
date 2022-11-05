@@ -1,7 +1,6 @@
 use crate::constants::*;
 use crate::util::board_state::BoardState;
 use crate::util::util::{DiskColor, DiskData};
-use gloo::console::log;
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
 
 use std::cell::RefCell;
@@ -81,8 +80,7 @@ impl Column {
             if disks.game_won {
                 return ColumnMessages::NoChange;
             }
-            let mut i = BOARD_HEIGHT - 1;
-            loop {
+            for i in (0..BOARD_HEIGHT).rev() {
                 if disks.board_state[i][col_num] == DiskColor::Empty {
                     if disks.check_winner(DiskData::new(i, col_num, disks.current_player)) {
                         disks.game_won = true;
@@ -93,12 +91,13 @@ impl Column {
                         } else {
                             (DiskColor::P2, DiskColor::P1)
                         };
+                    let num_moves = disks.num_moves;
+                    disks.game_history[num_moves] = col_num;
+                    disks.num_moves += 1;
+                    if disks.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
+                        disks.game_won = true;
+                    }
                     return ColumnMessages::Rerender(event);
-                }
-                if i == 0 {
-                    break;
-                } else {
-                    i -= 1;
                 }
             }
             ColumnMessages::NoChange

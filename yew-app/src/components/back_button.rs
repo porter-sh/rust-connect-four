@@ -1,5 +1,5 @@
 use crate::router;
-use gloo::console::{error, log};
+use gloo::console::error;
 use yew::{function_component, html, Callback};
 use yew_router::prelude::*;
 

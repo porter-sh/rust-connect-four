@@ -1,4 +1,4 @@
-use crate::components::column::*;
+use crate::components::{column::*, undo_button::*};
 use crate::constants::*;
 use crate::router;
 use crate::util::board_state::BoardState;
@@ -18,6 +18,7 @@ use std::rc::Rc;
 
 pub struct Board {
     board: Rc<RefCell<BoardState>>,
+    #[allow(unused)]
     history_handle: HistoryHandle,
 }
 
@@ -77,22 +78,20 @@ impl Component for Board {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            BoardMessages::Rerender => {
-                log!("Callback does work.");
-                true
-            }
+            BoardMessages::Rerender => true,
             _ => false,
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
+        let route = ctx.link().route::<router::Route>().unwrap_or(router::Route::Home);
         html! {
-            <div class={"board-background"}>
-                {(0..BOARD_WIDTH).into_iter().map(|num| {
-                    html! {
-                        <Column col_num={ num } disks={ Rc::clone(&self.board) } in_game={
-                            if let Some(route) = ctx.link().route::<router::Route>() {
+            <>
+                <div class={ "board-background" }>
+                    {(0..BOARD_WIDTH).into_iter().map(|num| {
+                        html! {
+                            <Column col_num={ num } disks={ Rc::clone(&self.board) } in_game={
                                 match route {
                                     router::Route::LocalMultiplayer
                                         | router::Route::VersusBot
@@ -101,13 +100,25 @@ impl Component for Board {
                                         },
                                     _ => false
                                 }
-                            } else{
-                                false
+                            } rerender_board_callback={ rerender_board_callback.clone() } />
+                        }
+                    }).collect::<Html>()}
+                </div>
+                <div class={ "control-container" }>
+                    {match route {
+                        router::Route::LocalMultiplayer
+                            | router::Route::VersusBot => {
+                                html! {
+                                    <UndoButton
+                                        disks={ Rc::clone(&self.board) }
+                                        rerender_board_callback={ rerender_board_callback.clone() }
+                                    />
+                                }
                             }
-                        } rerender_board_callback={rerender_board_callback.clone()} />
-                    }
-                }).collect::<Html>()}
-            </div>
+                        _ => html! {}
+                    }}
+                </div>
+            </>
         }
     }
 }

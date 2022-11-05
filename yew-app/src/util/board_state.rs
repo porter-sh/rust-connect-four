@@ -10,6 +10,8 @@ pub struct BoardState {
     pub board_state: Disks,
     pub current_player: DiskColor,
     pub game_won: bool,
+    pub game_history: [usize; BOARD_WIDTH * BOARD_HEIGHT],
+    pub num_moves: usize,
     pub socket_writer: Option<SplitSink<WebSocket, Message>>,
 }
 
@@ -32,7 +34,9 @@ impl Default for BoardState {
             board_state: [[DiskColor::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
             current_player: DiskColor::P1,
             game_won: false,
-            socket_writer: None,
+            game_history: [0usize; BOARD_WIDTH * BOARD_HEIGHT],
+            num_moves: 0usize,
+            socket_writer: None
         }
     }
 }
