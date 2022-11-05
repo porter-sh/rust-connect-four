@@ -4,13 +4,13 @@ use yew::{function_component, html, Callback, Properties};
 use yew_router::prelude::*;
 
 #[derive(Properties, PartialEq)]
-pub struct Props {
+pub struct GameButtonProperties {
     pub text: &'static str,
     pub route: router::Route,
 }
 
 #[function_component(GameButton)]
-pub fn game_button(props: &Props) -> Html {
+pub fn game_button(props: &GameButtonProperties) -> Html {
     if let Some(history) = use_history() {
         let route = props.route.clone();
         return html! {

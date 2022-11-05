@@ -7,13 +7,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Properties, PartialEq)]
-pub struct BackButtonProperties {
+pub struct UndoButtonProperties {
     pub disks: Rc<RefCell<BoardState>>,
     pub rerender_board_callback: Callback<MouseEvent>
 }
 
 #[function_component(UndoButton)]
-pub fn undo_button(props: &BackButtonProperties) -> Html {
+pub fn undo_button(props: &UndoButtonProperties) -> Html {
 
     return html! {
 
