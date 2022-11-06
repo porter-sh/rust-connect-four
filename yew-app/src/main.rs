@@ -16,9 +16,6 @@ fn app() -> Html {
         <BrowserRouter>
             <Switch<router::Route> render={Switch::render(router::switch_route)} /> // renders additional page specific components / logic
             <components::board::Board />
-            <div class="control-container">
-                <components::back_button::BackButton /> // only renders when not on home page
-            </div>
         </BrowserRouter>
     }
 }

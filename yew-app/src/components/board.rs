@@ -2,70 +2,65 @@
 //! Board contains the internal BoardState, and renders that state through Column components
 //! Board also accepts user input when in the middle of a game via Column components
 
-use crate::components::{column::*, undo_button::*};
+use crate::components::{column::*, game_control_buttons::GameControlButtons};
 use crate::constants::*;
-use crate::router;
+use crate::router::Route;
 use crate::util::board_state::BoardState;
-use yew::{html, Component, Context, Html};
+use crate::util::net;
+use gloo::console::log;
+use yew::MouseEvent;
+use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 
-use yew::MouseEvent;
-
-use futures::{SinkExt, StreamExt};
-use gloo::console::log;
-use gloo_net::websocket::{futures::WebSocket, Message};
-use wasm_bindgen_futures::spawn_local;
-
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::mpsc;
+
+pub enum BoardMessages {
+    Rerender,
+    RerenderAndUpdateColumn(u8),
+}
 
 /// Board component to store state of the board, to render the board, and to accept user input
 pub struct Board {
     board: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
     #[allow(unused)]
-    history_handle: HistoryHandle // when not dropped allows the Board to respond to route changes
+    history_handle: HistoryHandle, // when not dropped allows the Board to respond to route changes
 }
 
 impl Component for Board {
-    type Message = ();
+    type Message = BoardMessages;
     type Properties = ();
 
     /// Creates the Board component and adds a history listener to selectively react to and rerender on route changes
     fn create(ctx: &Context<Self>) -> Self {
-        let cb: yew::Callback<MouseEvent> = ctx.link().callback(|_| {
-            log!("In callback");
-        });
-
-        let mut ws = WebSocket::open("ws://127.0.0.1:8081").unwrap();
-        let (mut write, mut read) = ws.split();
-
-        spawn_local(async move {
-            while let Some(msg) = read.next().await {
-                cb.emit(MouseEvent::new("mousedown").unwrap());
-                log!(format!("1. {:?}", msg))
-            }
-            log!("WebSocket Closed")
-        });
-
         let board = Rc::new(RefCell::new(Default::default()));
+        let callback = ctx
+            .link()
+            .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));
         let history_handle = {
             let board = Rc::clone(&board);
             ctx.link()
-                .add_history_listener(ctx.link().callback(move |history: AnyHistory| { // Will rerender the Board
-                    if let Some(route) = history.location().route::<router::Route>() {
+                .add_history_listener(ctx.link().callback(move |history: AnyHistory| {
+                    // Will rerender the Board
+                    if let Some(route) = history.location().route::<Route>() {
                         match route {
-                            router::Route::LocalMultiplayer
-                            | router::Route::VersusBot
-                            | router::Route::OnlineMultiplayer => {
+                            Route::LocalMultiplayer | Route::VersusBot => {
                                 *board.borrow_mut() = Default::default(); // Reset the BoardState when starting a new game
-
-                                let mut ws = WebSocket::open("ws://127.0.0.1:8081").unwrap();
-                                let (mut write, mut read) = ws.split();
+                            }
+                            Route::OnlineMultiplayer => {
+                                *board.borrow_mut() = BoardState {
+                                    socket_writer: Some(net::spawn_connection_threads(
+                                        callback.clone(),
+                                    )),
+                                    ..Default::default()
+                                };
                             }
                             _ => {}
                         }
                     }
+                    BoardMessages::Rerender
                 }))
                 .unwrap() // If an error occured it is likely because this Board is not the child of a router component
         };
@@ -77,7 +72,10 @@ impl Component for Board {
 
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
-    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        if let BoardMessages::RerenderAndUpdateColumn(num) = msg {
+            log!(format!("Received {}", num));
+        }
         true
     }
 
@@ -85,8 +83,8 @@ impl Component for Board {
     /// If in the middle of a game, allows for user input
     /// Renders an UndoButton if playing a supported gamemode
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let rerender_board_callback = ctx.link().callback(|_| ());
-        let route = ctx.link().route::<router::Route>().unwrap_or(router::Route::Home);
+        let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
+        let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
         html! {
             <>
                 <div class={ "board-background" }>
@@ -94,9 +92,9 @@ impl Component for Board {
                         html! {
                             <Column col_num={ num } disks={ Rc::clone(&self.board) } in_game={ // Accept input if in game
                                 match route {
-                                    router::Route::LocalMultiplayer
-                                        | router::Route::VersusBot
-                                        | router::Route::OnlineMultiplayer => {
+                                    Route::LocalMultiplayer
+                                        | Route::VersusBot
+                                        | Route::OnlineMultiplayer => {
                                             true
                                         },
                                     _ => false
@@ -105,20 +103,8 @@ impl Component for Board {
                         }
                     }).collect::<Html>()}
                 </div>
-                <div class={ "control-container" }>
-                    {match route {
-                        router::Route::LocalMultiplayer
-                            | router::Route::VersusBot => { // Render an UndoButton if playing a supported gamemode
-                                html! {
-                                    <UndoButton
-                                        disks={ Rc::clone(&self.board) }
-                                        rerender_board_callback={ rerender_board_callback.clone() }
-                                    />
-                                }
-                            }
-                        _ => html! {}
-                    }}
-                </div>
+                <GameControlButtons board={ Rc::clone(&self.board) }
+                    rerender_board_callback={ rerender_board_callback.clone() } />
             </>
         }
     }

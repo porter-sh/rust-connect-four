@@ -1,16 +1,15 @@
 //! board_state contains BoardState, which stores board representation and additional state
 
-use futures::stream::SplitSink;
-use futures::{SinkExt, StreamExt};
-use gloo_net::websocket::{futures::WebSocket, Message};
-
 use crate::constants::*;
 use crate::util::util::{DiskColor, DiskData, Disks};
+use gloo_net::websocket::Message;
+
 use std::cmp::min;
+use std::sync::mpsc::Sender;
 
 /// BoardState stores the internal board representation, as well as other state data that other
 /// board components use
-/// 
+///
 /// Manually impls PartialEq since SplitSink does not impl PartialEq
 pub struct BoardState {
     pub board_state: Disks,
@@ -18,7 +17,7 @@ pub struct BoardState {
     pub game_won: bool,
     pub game_history: [usize; BOARD_WIDTH * BOARD_HEIGHT],
     pub num_moves: usize,
-    pub socket_writer: Option<SplitSink<WebSocket, Message>>,
+    pub socket_writer: Option<Sender<u8>>,
 }
 
 /// Manual PartialEq impl since SplitSink does not impl PartialEq
@@ -44,7 +43,7 @@ impl Default for BoardState {
             game_won: false,
             game_history: [0usize; BOARD_WIDTH * BOARD_HEIGHT],
             num_moves: 0usize,
-            socket_writer: None
+            socket_writer: None,
         }
     }
 }
