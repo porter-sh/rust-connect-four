@@ -2,10 +2,9 @@
 
 use crate::constants::*;
 use crate::util::util::{DiskColor, DiskData, Disks};
-use gloo_net::websocket::Message;
+use tokio::sync::mpsc::UnboundedSender;
 
 use std::cmp::min;
-use std::sync::mpsc::Sender;
 
 /// BoardState stores the internal board representation, as well as other state data that other
 /// board components use
@@ -17,7 +16,7 @@ pub struct BoardState {
     pub game_won: bool,
     pub game_history: [usize; BOARD_WIDTH * BOARD_HEIGHT],
     pub num_moves: usize,
-    pub socket_writer: Option<Sender<u8>>,
+    pub socket_writer: Option<UnboundedSender<u8>>,
 }
 
 /// Manual PartialEq impl since SplitSink does not impl PartialEq
@@ -27,8 +26,7 @@ impl PartialEq for BoardState {
             && self.current_player == other.current_player
             && self.game_won == other.game_won
             && match (&self.socket_writer, &other.socket_writer) {
-                (Some(_), Some(_)) => true,
-                (None, None) => true,
+                (Some(_), Some(_)) | (None, None) => true,
                 _ => false,
             }
     }

@@ -1,28 +1,29 @@
-use yew::{Callback, MouseEvent};
+use yew::Callback;
 
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use gloo::console::{error, log};
+use gloo::{console::{error, log}, utils::errors::JsError};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use wasm_bindgen_futures::spawn_local;
 
-use std::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
-pub fn spawn_connection_threads(callback: Callback<u8>) -> Sender<u8> {
-    let ws = WebSocket::open("ws://127.0.0.1:8081").unwrap();
-    let (writer, reader) = ws.split();
-    let (sender, receiver) = mpsc::channel();
+pub fn spawn_connection_threads(callback: Callback<u8>) -> Result<UnboundedSender<u8>, JsError> {
+    let websocket = WebSocket::open("ws://127.0.0.1:8081")?;
+    let (writer, reader) = websocket.split();
+    let (sender, receiver) = mpsc::unbounded_channel();
 
     spawn_reader_thread(reader, callback);
     spawn_writer_thread(writer, receiver);
 
-    sender
+    Ok(sender)
 }
 
 fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8>) {
     spawn_local(async move {
+        log!("Entered reader thread.");
         while let Some(Ok(msg)) = reader.next().await {
             match msg {
                 Message::Bytes(bytes) => {
@@ -42,9 +43,10 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
     });
 }
 
-fn spawn_writer_thread(mut writer: SplitSink<WebSocket, Message>, receiver: Receiver<u8>) {
+fn spawn_writer_thread(mut writer: SplitSink<WebSocket, Message>, mut receiver: UnboundedReceiver<u8>) {
     spawn_local(async move {
-        while let Ok(msg) = receiver.recv() {
+        log!("Entered writer thread.");
+        while let Some(msg) = receiver.recv().await {
             writer.send(Message::Bytes(vec![msg])).await.unwrap();
         }
         log!("Exiting writer thread.");

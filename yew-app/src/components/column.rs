@@ -10,6 +10,7 @@ use crate::constants::*;
 use crate::util::board_state::BoardState;
 use crate::util::util::{DiskColor, DiskData};
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
+use gloo::console::error;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -47,7 +48,7 @@ impl Component for Column {
             onclick: {
                 let board = Rc::clone(&ctx.props().disks);
                 let col_num = ctx.props().col_num;
-                ctx.link().callback(move |event| {
+                ctx.link().callback(move |_| {
                     let disks = &mut board.borrow_mut();
 
                     if disks.game_won {
@@ -75,7 +76,9 @@ impl Component for Column {
                             }
 
                             if let Some(sender) = &disks.socket_writer {
-                                sender.send(col_num as u8);
+                                if let Err(e) = sender.send(col_num as u8) {
+                                    error!(format!("{}", e));
+                                }
                             }
 
                             return ColumnMessages::Rerender;

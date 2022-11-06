@@ -8,14 +8,12 @@ use crate::router::Route;
 use crate::util::board_state::BoardState;
 use crate::util::net;
 use gloo::console::log;
-use yew::MouseEvent;
-use yew::{html, Component, Context, Html, Properties};
+use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc;
 
 pub enum BoardMessages {
     Rerender,
@@ -51,9 +49,12 @@ impl Component for Board {
                             }
                             Route::OnlineMultiplayer => {
                                 *board.borrow_mut() = BoardState {
-                                    socket_writer: Some(net::spawn_connection_threads(
+                                    socket_writer: match net::spawn_connection_threads(
                                         callback.clone(),
-                                    )),
+                                    ) {
+                                        Ok(writer) => Some(writer),
+                                        _ => None
+                                    },
                                     ..Default::default()
                                 };
                             }
