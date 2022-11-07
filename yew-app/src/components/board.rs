@@ -58,7 +58,9 @@ impl Component for Board {
                                     ..Default::default()
                                 };
                             }
-                            _ => {}
+                            _ => {
+                                board.borrow_mut().socket_writer = None
+                            }
                         }
                     }
                     BoardMessages::Rerender
