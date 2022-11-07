@@ -1,3 +1,4 @@
+use crate::constants::ConnectionProtocol;
 use yew::Callback;
 
 use futures::{
@@ -15,13 +16,17 @@ pub fn spawn_connection_threads(callback: Callback<u8>) -> Result<UnboundedSende
     let (writer, reader) = websocket.split();
     let (sender, receiver) = mpsc::unbounded_channel();
 
-    spawn_reader_thread(reader, callback);
+    spawn_reader_thread(reader, /*sender.clone(),*/ callback);
     spawn_writer_thread(writer, receiver);
 
     Ok(sender)
 }
 
-fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8>) {
+fn spawn_reader_thread(
+    mut reader: SplitStream<WebSocket>,
+    /*sender_to_writer_thread: UnboundedSender<u8>,*/
+    callback: Callback<u8>
+) {
     spawn_local(async move {
         log!("Entered reader thread.");
         while let Some(Ok(msg)) = reader.next().await {
@@ -29,6 +34,7 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
                 Message::Bytes(bytes) => {
                     log!("Received bytes!");
                     if bytes.len() > 0 {
+                        log!(bytes[0]);
                         callback.emit(bytes[0]);
                     } else {
                         error!("Received 0 bytes from server.");
@@ -39,6 +45,7 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
                 }
             }
         }
+        // sender_to_writer_thread.send(ConnectionProtocol::KILL_CONNECTION).unwrap();
         log!("Exiting reader thread.");
     });
 }
@@ -48,6 +55,7 @@ fn spawn_writer_thread(mut writer: SplitSink<WebSocket, Message>, mut receiver: 
         log!("Entered writer thread.");
         while let Some(msg) = receiver.recv().await {
             writer.send(Message::Bytes(vec![msg])).await.unwrap();
+            if msg == ConnectionProtocol::KILL_CONNECTION { break; }
         }
         log!("Exiting writer thread.");
     });
