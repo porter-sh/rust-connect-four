@@ -53,14 +53,12 @@ impl Component for Board {
                                         callback.clone(),
                                     ) {
                                         Ok(writer) => Some(writer),
-                                        _ => None
+                                        _ => None,
                                     },
                                     ..Default::default()
                                 };
                             }
-                            _ => {
-                                board.borrow_mut().socket_writer = None
-                            }
+                            _ => board.borrow_mut().socket_writer = None,
                         }
                     }
                     BoardMessages::Rerender
@@ -88,6 +86,13 @@ impl Component for Board {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
         let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
+
+        if route == Route::OnlineMultiplayer {
+            let query_string = ctx.link().location().expect("no location").search();
+            let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
+            log!("lobby:", lobby);
+        }
+
         html! {
             <>
                 <div class={ "board-background" }>

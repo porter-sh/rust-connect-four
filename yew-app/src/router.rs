@@ -1,17 +1,19 @@
 //! router contains the various routes the application can go to
-//! 
+//!
 //! router also contains a switch_route function to selectively render page specific components / logic
 
 use yew::{html, Html};
 use yew_router::prelude::*;
 
 use crate::pages::home::Home;
+use crate::pages::lobby_select::LobbySelect;
 
 /// Render additional page specific components / logic
 /// To be called in a Yew <Switch<Route> render={Switch::render(switch_route)} /> component
 pub fn switch_route(route: &Route) -> Html {
     match route {
         Route::Home => html! {<Home />},
+        Route::LobbySelect => html! {<LobbySelect />},
         Route::LocalMultiplayer => html! {},
         Route::VersusBot => html! {},
         Route::OnlineMultiplayer => html! {},
@@ -29,15 +31,17 @@ pub fn switch_route(route: &Route) -> Html {
 pub enum Route {
     #[at("/")]
     Home,
-    #[at("local-multiplayer")]
+    #[at("/lobby-select")]
+    LobbySelect,
+    #[at("/local-multiplayer")]
     LocalMultiplayer,
-    #[at("versus-bot")]
+    #[at("/versus-bot")]
     VersusBot,
-    #[at("online-multiplayer")]
+    #[at("/online-multiplayer/")]
     OnlineMultiplayer,
     #[at("/404")]
     NotFound,
     #[not_found]
     #[at("/not_found")]
-    NotFoundNeedsRedirect // force URL to show 404 (rather than the typed URL) for not found pages
+    NotFoundNeedsRedirect, // force URL to show 404 (rather than the typed URL) for not found pages
 }

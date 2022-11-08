@@ -1,18 +1,21 @@
-use crate::constants::ConnectionProtocol;
+use crate::constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
 use yew::Callback;
 
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use gloo::{console::{error, log}, utils::errors::JsError};
+use gloo::{
+    console::{error, log},
+    utils::errors::JsError,
+};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use wasm_bindgen_futures::spawn_local;
 
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 pub fn spawn_connection_threads(callback: Callback<u8>) -> Result<UnboundedSender<u8>, JsError> {
-    let websocket = WebSocket::open("ws://127.0.0.1:8081")?;
+    let websocket = WebSocket::open(WEBSOCKET_ADDRESS)?;
     let (writer, reader) = websocket.split();
     let (sender, receiver) = mpsc::unbounded_channel();
 
@@ -31,7 +34,6 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
                     log!("Received bytes!");
                     if bytes.len() > 0 {
                         log!(bytes[0]);
-                        if bytes[0] == ConnectionProtocol::KILL_CONNECTION { break; }
                         callback.emit(bytes[0]);
                     } else {
                         error!("Received 0 bytes from server.");
@@ -46,7 +48,10 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
     });
 }
 
-fn spawn_writer_thread(mut writer: SplitSink<WebSocket, Message>, mut receiver: UnboundedReceiver<u8>) {
+fn spawn_writer_thread(
+    mut writer: SplitSink<WebSocket, Message>,
+    mut receiver: UnboundedReceiver<u8>,
+) {
     spawn_local(async move {
         log!("Entered writer thread.");
         let mut connection_killed = false;
@@ -58,7 +63,10 @@ fn spawn_writer_thread(mut writer: SplitSink<WebSocket, Message>, mut receiver: 
             }
         }
         if !connection_killed {
-            writer.send(Message::Bytes(vec![ConnectionProtocol::KILL_CONNECTION])).await.unwrap();
+            writer
+                .send(Message::Bytes(vec![ConnectionProtocol::KILL_CONNECTION]))
+                .await
+                .unwrap();
         }
         log!("Exiting writer thread.");
     });
