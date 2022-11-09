@@ -61,7 +61,6 @@ impl Component for Column {
                     for i in (0..BOARD_HEIGHT).rev() {
                         if disks.board_state[i][col_num] == DiskColor::Empty {
                             if disks.check_winner(DiskData::new(i, col_num, disks.current_player)) {
-                                disks.socket_writer = None;
                                 disks.game_won = true;
                             }
 
@@ -82,9 +81,14 @@ impl Component for Column {
                             }
 
                             if disks.socket_writer.is_some() {
-                                disks.game_won = true;
+                                let mut col_num_addition = 0;
+                                if disks.game_won {
+                                    col_num_addition = ConnectionProtocol::WINNING_MOVE_ADDITION;
+                                } else {
+                                    disks.game_won = true;
+                                }
                                 if let Some(sender) = &disks.socket_writer {
-                                    if let Err(e) = sender.send(col_num as u8) {
+                                    if let Err(e) = sender.send(col_num as u8 + col_num_addition) {
                                         error!(format!("{}", e));
                                     }
                                 }

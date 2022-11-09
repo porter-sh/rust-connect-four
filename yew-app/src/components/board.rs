@@ -73,13 +73,20 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if let BoardMessages::RerenderAndUpdateColumn(num) = msg {
+        if let BoardMessages::RerenderAndUpdateColumn(mut num) = msg {
             let mut board = self.board.borrow_mut();
             if num == ConnectionProtocol::IS_PLAYER_1 {
                 board.current_player = DiskColor::P1;
             } else if num == ConnectionProtocol::IS_PLAYER_2 {
                 board.current_player = DiskColor::P2;
                 board.game_won = true;
+            } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION <= num
+                && num <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
+            {
+                num -= ConnectionProtocol::WINNING_MOVE_ADDITION;
+                board.game_won = true;
+            } else {
+                board.game_won = false;
             }
             if ConnectionProtocol::COL_0 <= num && num <= ConnectionProtocol::COL_6 {
                 for row in (0..BOARD_HEIGHT).rev() {
@@ -93,7 +100,6 @@ impl Component for Board {
                         break;
                     }
                 }
-                board.game_won = false;
             }
             log!(format!("Received {}", num));
         }
@@ -107,11 +113,10 @@ impl Component for Board {
         let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
         let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
 
-        if route == Route::OnlineMultiplayer {
+        /* if route == Route::OnlineMultiplayer {
             let query_string = ctx.link().location().expect("no location").search();
             let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
-            log!("lobby:", lobby);
-        }
+        } */
 
         html! {
             <>

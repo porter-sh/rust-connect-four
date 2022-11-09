@@ -28,9 +28,7 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
         while let Some(Ok(msg)) = reader.next().await {
             match msg {
                 Message::Bytes(bytes) => {
-                    log!("Received bytes!");
                     if bytes.len() > 0 {
-                        log!(bytes[0]);
                         callback.emit(bytes[0]);
                     } else {
                         error!("Received 0 bytes from server.");
@@ -51,20 +49,14 @@ fn spawn_writer_thread(
 ) {
     spawn_local(async move {
         log!("Entered writer thread.");
-        let mut connection_killed = false;
         while let Some(msg) = receiver.recv().await {
+            log!(format!("Sent {}", msg));
             writer.send(Message::Bytes(vec![msg])).await.unwrap();
-            if msg == ConnectionProtocol::KILL_CONNECTION {
-                connection_killed = true;
-                break;
-            }
         }
-        if !connection_killed {
-            writer
-                .send(Message::Bytes(vec![ConnectionProtocol::KILL_CONNECTION]))
-                .await
-                .unwrap();
-        }
+        writer
+            .send(Message::Bytes(vec![ConnectionProtocol::KILL_CONNECTION]))
+            .await
+            .unwrap_or_default();
         log!("Exiting writer thread.");
     });
 }

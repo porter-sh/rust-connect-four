@@ -10,6 +10,8 @@ impl ConnectionProtocol {
     pub const KILL_CONNECTION: u8 = 255;
     pub const CONNECTION_FAILED: u8 = 101;
 
+    pub const WINNING_MOVE_ADDITION: u8 = 200;
+
     pub const IS_PLAYER_1: u8 = 254;
     pub const IS_PLAYER_2: u8 = 253;
 

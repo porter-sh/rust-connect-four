@@ -7,7 +7,6 @@ use websocket::{Message, OwnedMessage};
 use std::collections::HashMap;
 use std::net::TcpStream;
 use std::thread;
-use std::time::Duration;
 
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -21,6 +20,10 @@ fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStrea
                 println!("Bad message from player1.");
                 break;
             }
+            if msg[0] == 255 {
+                println!("Player1 leaving.");
+                break;
+            }
             player2
                 .send_message(&Message::binary(msg))
                 .unwrap_or_default();
@@ -31,6 +34,10 @@ fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStrea
         if let Ok(OwnedMessage::Binary(msg)) = player2.recv_message() {
             if msg.len() != 1 {
                 println!("Bad message from player2.");
+                break;
+            }
+            if msg[0] == 255 {
+                println!("Player2 leaving.");
                 break;
             }
             player1
