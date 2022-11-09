@@ -1,9 +1,10 @@
 //! game_button contains the GameButton component, which routes the app to a specified page
 
 use crate::router::Route;
-use gloo::console::error;
 use yew::{function_component, html, Callback, Properties};
 use yew_router::prelude::*;
+
+use gloo::console::error;
 
 /// Properties for what text the button should show, and which page to route to
 #[derive(Properties, PartialEq)]

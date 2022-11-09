@@ -2,18 +2,17 @@
 //! Board contains the internal BoardState, and renders that state through Column components
 //! Board also accepts user input when in the middle of a game via Column components
 
-use crate::components::{column::*, game_control_buttons::GameControlButtons};
-use crate::constants::*;
-use crate::router::Route;
-use crate::util::board_state::BoardState;
-use crate::util::net;
-use gloo::console::log;
+use crate::{
+    components::{column::*, game_control_buttons::GameControlButtons},
+    constants::*,
+    router::Route,
+    util::{board_state::BoardState, net, util::DiskColor},
+};
+use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
-use yew_router::prelude::*;
-use yew_router::scope_ext::HistoryHandle;
+use yew_router::{prelude::*, scope_ext::HistoryHandle};
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use gloo::console::log;
 
 pub enum BoardMessages {
     Rerender,
@@ -75,6 +74,27 @@ impl Component for Board {
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         if let BoardMessages::RerenderAndUpdateColumn(num) = msg {
+            let mut board = self.board.borrow_mut();
+            if num == ConnectionProtocol::IS_PLAYER_1 {
+                board.current_player = DiskColor::P1;
+            } else if num == ConnectionProtocol::IS_PLAYER_2 {
+                board.current_player = DiskColor::P2;
+                board.game_won = true;
+            }
+            if ConnectionProtocol::COL_0 <= num && num <= ConnectionProtocol::COL_6 {
+                for row in (0..BOARD_HEIGHT).rev() {
+                    if board.board_state[row][num as usize] == DiskColor::Empty {
+                        board.board_state[row][num as usize] =
+                            if board.current_player == DiskColor::P1 {
+                                DiskColor::P2
+                            } else {
+                                DiskColor::P1
+                            };
+                        break;
+                    }
+                }
+                board.game_won = false;
+            }
             log!(format!("Received {}", num));
         }
         true

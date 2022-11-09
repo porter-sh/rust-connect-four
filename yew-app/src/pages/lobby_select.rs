@@ -1,8 +1,7 @@
 //! lobby_select contains the LobbySelect component
 //! LobbySelect renders a menu to select the desired lobby
 
-use crate::components::game_button::GameButton;
-use crate::router::Route;
+use crate::{components::game_button::GameButton, router::Route};
 use yew::prelude::*;
 
 /// LobbySelect component

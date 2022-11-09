@@ -1,8 +1,7 @@
 //! home contains the Home component for the home page
 //! Home renders a menu to select the gamemode
 
-use crate::components::game_button::GameButton;
-use crate::router::Route;
+use crate::{components::game_button::GameButton, router::Route};
 use yew::prelude::*;
 
 /// Home component

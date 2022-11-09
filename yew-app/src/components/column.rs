@@ -6,14 +6,17 @@
 //!
 //! When not in a game or if the game is won, Column will not accept player input
 
-use crate::constants::*;
-use crate::util::board_state::BoardState;
-use crate::util::util::{DiskColor, DiskData};
+use crate::{
+    constants::*,
+    util::{
+        board_state::BoardState,
+        util::{DiskColor, DiskData},
+    },
+};
+use std::{cell::RefCell, rc::Rc};
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
-use gloo::console::error;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use gloo::console::error;
 
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
@@ -58,15 +61,18 @@ impl Component for Column {
                     for i in (0..BOARD_HEIGHT).rev() {
                         if disks.board_state[i][col_num] == DiskColor::Empty {
                             if disks.check_winner(DiskData::new(i, col_num, disks.current_player)) {
+                                disks.socket_writer = None;
                                 disks.game_won = true;
                             }
 
-                            (disks.board_state[i][col_num], disks.current_player) =
-                                if disks.current_player == DiskColor::P1 {
-                                    (DiskColor::P1, DiskColor::P2)
+                            disks.board_state[i][col_num] = disks.current_player;
+                            if disks.socket_writer.is_none() {
+                                disks.current_player = if disks.current_player == DiskColor::P1 {
+                                    DiskColor::P2
                                 } else {
-                                    (DiskColor::P2, DiskColor::P1)
+                                    DiskColor::P1
                                 };
+                            }
 
                             let num_moves = disks.num_moves;
                             disks.game_history[num_moves] = col_num;
@@ -75,9 +81,12 @@ impl Component for Column {
                                 disks.game_won = true;
                             }
 
-                            if let Some(sender) = &disks.socket_writer {
-                                if let Err(e) = sender.send(col_num as u8) {
-                                    error!(format!("{}", e));
+                            if disks.socket_writer.is_some() {
+                                disks.game_won = true;
+                                if let Some(sender) = &disks.socket_writer {
+                                    if let Err(e) = sender.send(col_num as u8) {
+                                        error!(format!("{}", e));
+                                    }
                                 }
                             }
 

@@ -1,18 +1,15 @@
 use crate::constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
-use yew::Callback;
-
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use gloo::{
-    console::{error, log},
-    utils::errors::JsError,
-};
+use gloo::utils::errors::JsError;
 use gloo_net::websocket::{futures::WebSocket, Message};
-use wasm_bindgen_futures::spawn_local;
-
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use wasm_bindgen_futures::spawn_local;
+use yew::Callback;
+
+use gloo::console::{error, log};
 
 pub fn spawn_connection_threads(callback: Callback<u8>) -> Result<UnboundedSender<u8>, JsError> {
     let websocket = WebSocket::open(WEBSOCKET_ADDRESS)?;

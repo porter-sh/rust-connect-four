@@ -2,11 +2,9 @@
 //!
 //! router also contains a switch_route function to selectively render page specific components / logic
 
+use crate::pages::{home::Home, lobby_select::LobbySelect};
 use yew::{html, Html};
 use yew_router::prelude::*;
-
-use crate::pages::home::Home;
-use crate::pages::lobby_select::LobbySelect;
 
 /// Render additional page specific components / logic
 /// To be called in a Yew <Switch<Route> render={Switch::render(switch_route)} /> component
