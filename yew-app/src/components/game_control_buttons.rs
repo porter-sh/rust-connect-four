@@ -35,7 +35,7 @@ impl Component for GameControlButtons {
                         return;
                     } // At the start of the game
 
-                    disks.game_won = false; // Undoes win, allowing board interaction
+                    disks.can_move = true; // Undoes win, allowing board interaction
 
                     // Revert to previous player
                     disks.current_player = if disks.current_player == DiskColor::P1 {

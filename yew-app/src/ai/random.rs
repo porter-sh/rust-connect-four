@@ -2,8 +2,4 @@ use crate::ai::ai::Ai;
 
 pub struct RandomAi;
 
-impl Ai for RandomAi {
-    fn get_move(&self) -> u8 {
-        rand::random::<u8>() % 7
-    }
-}
+impl Ai for RandomAi { fn get_move(&self) -> u8 { (rand::random::<f32>() * 7) as u8 } }

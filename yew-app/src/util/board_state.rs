@@ -11,7 +11,7 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct BoardState {
     pub board_state: Disks,
     pub current_player: DiskColor,
-    pub game_won: bool,
+    pub can_move: bool,
     pub game_history: [usize; BOARD_WIDTH * BOARD_HEIGHT],
     pub num_moves: usize,
     pub socket_writer: Option<UnboundedSender<u8>>,
@@ -22,7 +22,7 @@ impl PartialEq for BoardState {
     fn eq(&self, other: &Self) -> bool {
         self.board_state == other.board_state
             && self.current_player == other.current_player
-            && self.game_won == other.game_won
+            && self.can_move == other.can_move
             && match (&self.socket_writer, &other.socket_writer) {
                 (Some(_), Some(_)) | (None, None) => true,
                 _ => false,
@@ -36,7 +36,7 @@ impl Default for BoardState {
         Self {
             board_state: [[DiskColor::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
             current_player: DiskColor::P1,
-            game_won: false,
+            can_move: true,
             game_history: [0usize; BOARD_WIDTH * BOARD_HEIGHT],
             num_moves: 0usize,
             socket_writer: None,

@@ -52,14 +52,10 @@ impl Component for Column {
                 ctx.link().callback(move |_| {
                     let disks = &mut board.borrow_mut();
 
-                    if disks.game_won {
-                        return ColumnMessages::NoChange;
-                    }
-
                     for i in (0..BOARD_HEIGHT).rev() {
                         if disks.board_state[i][col_num] == DiskColor::Empty {
                             if disks.check_winner(DiskData::new(i, col_num, disks.current_player)) {
-                                disks.game_won = true;
+                                disks.can_move = false;
                             }
 
                             disks.board_state[i][col_num] = disks.current_player;
@@ -75,15 +71,15 @@ impl Component for Column {
                             disks.game_history[num_moves] = col_num;
                             disks.num_moves += 1;
                             if disks.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
-                                disks.game_won = true;
+                                disks.can_move = false;
                             }
 
                             if disks.socket_writer.is_some() {
                                 let mut col_num_addition = 0;
-                                if disks.game_won {
+                                if !disks.can_move {
                                     col_num_addition = ConnectionProtocol::WINNING_MOVE_ADDITION;
                                 } else {
-                                    disks.game_won = true;
+                                    disks.can_move = false;
                                 }
                                 if let Some(sender) = &disks.socket_writer {
                                     if let Err(e) = sender.send(col_num as u8 + col_num_addition) {
@@ -107,7 +103,7 @@ impl Component for Column {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             ColumnMessages::Rerender => {
-                if ctx.props().disks.borrow().game_won {
+                if !ctx.props().disks.borrow().can_move {
                     // Tell the Board to rerender
                     ctx.props().rerender_board_callback.emit(()); // MouseEvent type irrelevant
                 }
@@ -122,7 +118,7 @@ impl Component for Column {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-                {if ctx.props().in_game && !ctx.props().disks.borrow().game_won {html!{<button
+                {if ctx.props().in_game && ctx.props().disks.borrow().can_move {html!{<button
                     class={ "btn" }
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                     onclick={ self.onclick.clone() }

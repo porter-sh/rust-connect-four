@@ -73,25 +73,24 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if let BoardMessages::RerenderAndUpdateColumn(mut num) = msg {
+        if let BoardMessages::RerenderAndUpdateColumn(mut val) = msg {
             let mut board = self.board.borrow_mut();
-            if num == ConnectionProtocol::IS_PLAYER_1 {
+            if val == ConnectionProtocol::IS_PLAYER_1 {
                 board.current_player = DiskColor::P1;
-            } else if num == ConnectionProtocol::IS_PLAYER_2 {
+            } else if val == ConnectionProtocol::IS_PLAYER_2 {
                 board.current_player = DiskColor::P2;
-                board.game_won = true;
-            } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION <= num
-                && num <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
+                board.can_move = false;
+            } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION <= val
+                && val <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
             {
-                num -= ConnectionProtocol::WINNING_MOVE_ADDITION;
-                board.game_won = true;
+                val -= ConnectionProtocol::WINNING_MOVE_ADDITION;
             } else {
-                board.game_won = false;
+                board.can_move = true;
             }
-            if ConnectionProtocol::COL_0 <= num && num <= ConnectionProtocol::COL_6 {
+            if ConnectionProtocol::COL_0 <= val && val <= ConnectionProtocol::COL_6 {
                 for row in (0..BOARD_HEIGHT).rev() {
-                    if board.board_state[row][num as usize] == DiskColor::Empty {
-                        board.board_state[row][num as usize] =
+                    if board.board_state[row][val as usize] == DiskColor::Empty {
+                        board.board_state[row][val as usize] =
                             if board.current_player == DiskColor::P1 {
                                 DiskColor::P2
                             } else {
@@ -101,7 +100,7 @@ impl Component for Board {
                     }
                 }
             }
-            log!(format!("Received {}", num));
+            log!(format!("Received {}", val));
         }
         true
     }
