@@ -18,7 +18,7 @@ pub fn lobby_select() -> Html {
                     <input type="text" name="lobby" id="lobby-input" required=true />
                     <input type="submit" value="Submit" class="menu-btn"/>
                 </form>
-                <GameButton text={"Back"} route={Route::Home} />
+                <GameButton<Route> text={"Back"} route={Route::Home} />
             </div>
         </>
     }

@@ -15,3 +15,5 @@ gloo-utils = "0.1.5"
 futures = "0.3.25"
 wasm-bindgen-futures = "0.4.33"
 tokio = { version = "1.21.2", features = ["sync"] }
+getrandom = { version = "0.2", features = ["js"] }
+rand = "0.8.5"

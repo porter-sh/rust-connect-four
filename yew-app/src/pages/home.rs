@@ -13,9 +13,9 @@ pub fn home() -> Html {
             <div class="background-blur" />
             <div class={"menu-container"}>
                 <p class="menu-txt">{"Menu"}</p>
-                <GameButton text={"Local Multiplayer"} route={Route::LocalMultiplayer} />
-                <GameButton text={"Online Multiplayer"} route={Route::LobbySelect} />
-                <GameButton text={"Singleplayer"} route={Route::VersusBot} />
+                <GameButton<Route> text={"Local Multiplayer"} route={Route::LocalMultiplayer} />
+                <GameButton<Route> text={"Online Multiplayer"} route={Route::LobbySelect} />
+                <GameButton<Route> text={"Singleplayer"} route={Route::AiSelect} />
             </div>
         </>
     }

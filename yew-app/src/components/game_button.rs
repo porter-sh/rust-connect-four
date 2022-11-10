@@ -1,6 +1,5 @@
 //! game_button contains the GameButton component, which routes the app to a specified page
 
-use crate::router::Route;
 use yew::{function_component, html, Callback, Properties};
 use yew_router::prelude::*;
 
@@ -8,15 +7,18 @@ use gloo::console::error;
 
 /// Properties for what text the button should show, and which page to route to
 #[derive(Properties, PartialEq)]
-pub struct GameButtonProperties {
+pub struct GameButtonProperties<T: Routable> {
     pub text: &'static str,
-    pub route: Route,
+    pub route: T,
 }
 
 /// GameButton component
 /// Routes to the specified page when clicked
 #[function_component(GameButton)]
-pub fn game_button(props: &GameButtonProperties) -> Html {
+pub fn game_button<T>(props: &GameButtonProperties<T>) -> Html
+where
+    T: Routable + 'static,
+{
     if let Some(history) = use_history() {
         let route = props.route.clone();
         return html! {

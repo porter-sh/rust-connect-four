@@ -2,7 +2,7 @@
 //!
 //! router also contains a switch_route function to selectively render page specific components / logic
 
-use crate::pages::{home::Home, lobby_select::LobbySelect};
+use crate::pages::{ai_select::AiSelect, home::Home, lobby_select::LobbySelect};
 use yew::{html, Html};
 use yew_router::prelude::*;
 
@@ -12,8 +12,9 @@ pub fn switch_route(route: &Route) -> Html {
     match route {
         Route::Home => html! {<Home />},
         Route::LobbySelect => html! {<LobbySelect />},
+        Route::AiSelect => html! {<AiSelect />},
         Route::LocalMultiplayer => html! {},
-        Route::VersusBot => html! {},
+        Route::VersusBot => html! { <Switch<AiRoute> render={Switch::render(switch_ai_route)} />},
         Route::OnlineMultiplayer => html! {},
         Route::NotFound => html! {
             { "This is not the page you are looking for :( LLLLL" }
@@ -24,6 +25,12 @@ pub fn switch_route(route: &Route) -> Html {
     }
 }
 
+pub fn switch_ai_route(route: &AiRoute) -> Html {
+    match route {
+        AiRoute::Random => html! {},
+    }
+}
+
 /// Enum containing the routes (pages) the app can go to
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {
@@ -31,9 +38,11 @@ pub enum Route {
     Home,
     #[at("/lobby-select")]
     LobbySelect,
+    #[at("/ai-select")]
+    AiSelect,
     #[at("/local-multiplayer")]
     LocalMultiplayer,
-    #[at("/versus-bot")]
+    #[at("/versus-bot/*")]
     VersusBot,
     #[at("/online-multiplayer/")]
     OnlineMultiplayer,
@@ -42,4 +51,10 @@ pub enum Route {
     #[not_found]
     #[at("/not_found")]
     NotFoundNeedsRedirect, // force URL to show 404 (rather than the typed URL) for not found pages
+}
+
+#[derive(Clone, Routable, PartialEq)]
+pub enum AiRoute {
+    #[at("/versus-bot/random")]
+    Random,
 }
