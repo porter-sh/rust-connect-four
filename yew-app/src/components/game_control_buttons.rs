@@ -1,8 +1,8 @@
 use crate::{
-    constants::BOARD_HEIGHT,
     router::Route,
     util::{board_state::BoardState, util::DiskColor},
 };
+use constants::BOARD_HEIGHT;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, Properties};
 use yew_router::prelude::*;

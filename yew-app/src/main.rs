@@ -2,7 +2,6 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 pub mod components;
-pub mod constants;
 pub mod pages;
 pub mod router;
 pub mod util;

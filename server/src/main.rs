@@ -1,10 +1,12 @@
+use constants::ConnectionProtocol;
+
 use websocket::server::sync::Server;
 use websocket::server::upgrade::WsUpgrade;
 use websocket::sync::server::upgrade::Buffer;
 use websocket::sync::Client;
 use websocket::{Message, OwnedMessage};
 
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::net::TcpStream;
 use std::thread;
 
@@ -20,7 +22,7 @@ fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStrea
                 println!("Bad message from player1.");
                 break;
             }
-            if msg[0] == 255 {
+            if msg[0] == ConnectionProtocol::KILL_CONNECTION {
                 println!("Player1 leaving.");
                 break;
             }
@@ -36,7 +38,7 @@ fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStrea
                 println!("Bad message from player2.");
                 break;
             }
-            if msg[0] == 255 {
+            if msg[0] == ConnectionProtocol::KILL_CONNECTION {
                 println!("Player2 leaving.");
                 break;
             }
@@ -58,14 +60,14 @@ fn handle_connection(
     receiver: Receiver<WsUpgrade<TcpStream, Option<Buffer>>>,
 ) {
     if let Ok(mut player1) = incoming.accept() {
-        if let Err(_) = player1.send_message(&Message::binary(&[254u8][..])) {
+        if let Err(_) = player1.send_message(&Message::binary(&[ConnectionProtocol::IS_PLAYER_1][..])) {
             println!("Early shutdown to client, exiting thread early.");
             player1.shutdown().unwrap_or_default();
             return;
         }
         if let Ok(incoming) = receiver.recv() {
             if let Ok(mut player2) = incoming.accept() {
-                if let Err(_) = player2.send_message(&Message::binary(&[253u8][..])) {
+                if let Err(_) = player2.send_message(&Message::binary(&[ConnectionProtocol::IS_PLAYER_2][..])) {
                     println!("Early shutdown to client, exiting thread early.");
                     player1.shutdown().unwrap_or_default();
                     player2.shutdown().unwrap_or_default();

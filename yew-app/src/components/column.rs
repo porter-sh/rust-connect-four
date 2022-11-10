@@ -6,13 +6,11 @@
 //!
 //! When not in a game or if the game is won, Column will not accept player input
 
-use crate::{
-    constants::*,
-    util::{
-        board_state::BoardState,
-        util::{DiskColor, DiskData},
-    },
+use crate::util::{
+    board_state::BoardState,
+    util::{DiskColor, DiskData},
 };
+use constants::*;
 use std::{cell::RefCell, rc::Rc};
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
 

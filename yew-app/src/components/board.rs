@@ -4,10 +4,10 @@
 
 use crate::{
     components::{column::*, game_control_buttons::GameControlButtons},
-    constants::*,
     router::Route,
     util::{board_state::BoardState, net, util::DiskColor},
 };
+use constants::*;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
 use yew_router::{prelude::*, scope_ext::HistoryHandle};

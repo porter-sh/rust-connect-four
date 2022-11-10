@@ -1,4 +1,4 @@
-use crate::constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
+use constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,

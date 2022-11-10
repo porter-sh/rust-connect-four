@@ -1,6 +1,6 @@
 //! util contains helper structs for the player disks
 
-use crate::constants::*;
+use constants::*;
 use std::cmp::min;
 
 /// 2D array of player disks to internally store the board state

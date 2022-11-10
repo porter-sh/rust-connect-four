@@ -1,8 +1,6 @@
 //! board_state contains BoardState, which stores board representation and additional state
-use crate::{
-    constants::*,
-    util::util::{DiskColor, DiskData, Disks},
-};
+use crate::util::util::{DiskColor, DiskData, Disks};
+use constants::*;
 use std::cmp::min;
 use tokio::sync::mpsc::UnboundedSender;
 
