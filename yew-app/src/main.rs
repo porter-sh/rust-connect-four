@@ -9,6 +9,7 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+pub mod ai;
 pub mod components;
 pub mod pages;
 pub mod router;

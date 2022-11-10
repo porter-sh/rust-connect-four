@@ -1,7 +1,10 @@
 //! util contains helper structs for the player disks
 
+use crate::ai::ai;
 use constants::*;
 use std::cmp::min;
+
+use tokio::sync::mpsc::UnboundedSender;
 
 /// 2D array of player disks to internally store the board state
 pub type Disks = [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT];
@@ -47,6 +50,35 @@ impl DiskColor {
             DiskColor::Empty => "empty",
             DiskColor::P1 => "p1",
             DiskColor::P2 => "p2",
+        }
+    }
+}
+
+pub enum SecondPlayerExtension {
+    OnlinePlayer(UnboundedSender<u8>),
+    AI(Box<dyn ai::AI>),
+    None,
+}
+
+use SecondPlayerExtension::{None, OnlinePlayer, AI};
+
+impl SecondPlayerExtension {
+    pub fn is_online_player(&self) -> bool {
+        match self {
+            OnlinePlayer(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_ai(&self) -> bool {
+        match self {
+            AI(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_none(&self) -> bool {
+        match self {
+            None => true,
+            _ => false,
         }
     }
 }

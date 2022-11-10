@@ -1,8 +1,11 @@
 //! board_state contains BoardState, which stores board representation and additional state
-use crate::util::util::{DiskColor, DiskData, Disks};
+use crate::util::util::{DiskColor, DiskData, Disks, SecondPlayerExtension};
 use constants::*;
 use std::cmp::min;
-use tokio::sync::mpsc::UnboundedSender;
+
+use gloo::console::error;
+
+use SecondPlayerExtension::{None, OnlinePlayer, AI};
 
 /// BoardState stores the internal board representation, as well as other state data that other
 /// board components use
@@ -14,7 +17,7 @@ pub struct BoardState {
     pub can_move: bool,
     pub game_history: [usize; BOARD_WIDTH * BOARD_HEIGHT],
     pub num_moves: usize,
-    pub socket_writer: Option<UnboundedSender<u8>>,
+    pub second_player_extension: SecondPlayerExtension,
 }
 
 /// Manual PartialEq impl since SplitSink does not impl PartialEq
@@ -23,8 +26,11 @@ impl PartialEq for BoardState {
         self.board_state == other.board_state
             && self.current_player == other.current_player
             && self.can_move == other.can_move
-            && match (&self.socket_writer, &other.socket_writer) {
-                (Some(_), Some(_)) | (None, None) => true,
+            && match (
+                &self.second_player_extension,
+                &other.second_player_extension,
+            ) {
+                (OnlinePlayer(_), OnlinePlayer(_)) | (AI(_), AI(_)) | (None, None) => true,
                 _ => false,
             }
     }
@@ -39,7 +45,7 @@ impl Default for BoardState {
             can_move: true,
             game_history: [0usize; BOARD_WIDTH * BOARD_HEIGHT],
             num_moves: 0usize,
-            socket_writer: None,
+            second_player_extension: None,
         }
     }
 }
@@ -47,14 +53,14 @@ impl Default for BoardState {
 /// Implements functions to check if the game has been won
 impl BoardState {
     /// Returns if the game is won by dropping a disk in the location stored by DiskData
-    pub fn check_winner(&self, new_disk: DiskData) -> bool {
+    pub fn check_winner(&mut self, new_disk: DiskData) {
         // check for a vertical win
         if new_disk.row < BOARD_HEIGHT - 3
             && self.board_state[new_disk.row + 1][new_disk.col] == new_disk.color
             && self.board_state[new_disk.row + 2][new_disk.col] == new_disk.color
             && self.board_state[new_disk.row + 3][new_disk.col] == new_disk.color
         {
-            return true;
+            self.can_move = false;
         }
 
         // check for a win in other directions
@@ -62,10 +68,42 @@ impl BoardState {
             || Self::check_right_diag(&self, &new_disk)
             || Self::check_left_diag(&self, &new_disk)
         {
-            return true;
+            self.can_move = false;
         }
+    }
 
-        false
+    pub fn update_player(&mut self) {
+        if self.second_player_extension.is_none() {
+            self.current_player = match self.current_player {
+                DiskColor::P1 => DiskColor::P2,
+                DiskColor::P2 => DiskColor::P1,
+                _ => panic!("Invalid player color"),
+            };
+        }
+    }
+
+    pub fn update_game_history(&mut self, selected_col: usize) {
+        self.game_history[self.num_moves] = selected_col;
+        self.num_moves += 1;
+        if self.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
+            self.can_move = false;
+        }
+    }
+
+    pub fn update_server_if_online(&mut self, selected_col: usize) {
+        if self.second_player_extension.is_online_player() {
+            let mut col_num_addition = 0;
+            if !self.can_move {
+                col_num_addition = ConnectionProtocol::WINNING_MOVE_ADDITION;
+            } else {
+                self.can_move = false;
+            }
+            if let OnlinePlayer(sender) = &self.second_player_extension {
+                if let Err(e) = sender.send(selected_col as u8 + col_num_addition) {
+                    error!(format!("Failed to send message: {}", e));
+                }
+            }
+        }
     }
 
     /// Helper function to check_winner

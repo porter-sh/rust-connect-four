@@ -14,6 +14,8 @@ use yew_router::{prelude::*, scope_ext::HistoryHandle};
 
 use gloo::console::log;
 
+use crate::util::util::SecondPlayerExtension::{None, OnlinePlayer, AI};
+
 pub enum BoardMessages {
     Rerender,
     RerenderAndUpdateColumn(u8),
@@ -22,8 +24,7 @@ pub enum BoardMessages {
 /// Board component to store state of the board, to render the board, and to accept user input
 pub struct Board {
     board: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
-    #[allow(unused)]
-    history_handle: HistoryHandle, // when not dropped allows the Board to respond to route changes
+    _history_handle: HistoryHandle, // when not dropped allows the Board to respond to route changes
 }
 
 impl Component for Board {
@@ -32,42 +33,7 @@ impl Component for Board {
 
     /// Creates the Board component and adds a history listener to selectively react to and rerender on route changes
     fn create(ctx: &Context<Self>) -> Self {
-        let board = Rc::new(RefCell::new(Default::default()));
-        let callback = ctx
-            .link()
-            .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));
-        let history_handle = {
-            let board = Rc::clone(&board);
-            ctx.link()
-                .add_history_listener(ctx.link().callback(move |history: AnyHistory| {
-                    // Will rerender the Board
-                    if let Some(route) = history.location().route::<Route>() {
-                        match route {
-                            Route::LocalMultiplayer | Route::VersusBot => {
-                                *board.borrow_mut() = Default::default(); // Reset the BoardState when starting a new game
-                            }
-                            Route::OnlineMultiplayer => {
-                                *board.borrow_mut() = BoardState {
-                                    socket_writer: match net::spawn_connection_threads(
-                                        callback.clone(),
-                                    ) {
-                                        Ok(writer) => Some(writer),
-                                        _ => None,
-                                    },
-                                    ..Default::default()
-                                };
-                            }
-                            _ => board.borrow_mut().socket_writer = None,
-                        }
-                    }
-                    BoardMessages::Rerender
-                }))
-                .unwrap() // If an error occured it is likely because this Board is not the child of a router component
-        };
-        Self {
-            board,
-            history_handle,
-        }
+        Board::new(ctx)
     }
 
     /// Rerender when a message is recieved
@@ -138,6 +104,56 @@ impl Component for Board {
                 <GameControlButtons board={ Rc::clone(&self.board) }
                     rerender_board_callback={ rerender_board_callback.clone() } />
             </>
+        }
+    }
+}
+
+impl Board {
+    pub fn new(ctx: &Context<Board>) -> Self {
+        let board_origin = Rc::new(RefCell::new(Default::default()));
+        Self {
+            board: Rc::clone(&board_origin),
+            _history_handle: Self::get_history_handle(ctx, board_origin),
+        }
+    }
+
+    fn get_history_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> HistoryHandle {
+        let callback = ctx
+            .link()
+            .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));
+        ctx.link()
+            .add_history_listener(ctx.link().callback(move |history: AnyHistory| {
+                let board_clone = Rc::clone(&board);
+                // Will rerender the Board
+                Self::on_reroute(board_clone, callback.clone(), history);
+                BoardMessages::Rerender
+            }))
+            .unwrap()
+    }
+
+    fn on_reroute(
+        board: Rc<RefCell<BoardState>>,
+        callback: yew::Callback<u8>,
+        history: AnyHistory,
+    ) {
+        if let Some(route) = history.location().route::<Route>() {
+            match route {
+                Route::LocalMultiplayer | Route::VersusBot => {
+                    *board.borrow_mut() = Default::default(); // Reset the BoardState when starting a new game
+                }
+                Route::OnlineMultiplayer => {
+                    *board.borrow_mut() = BoardState {
+                        second_player_extension: match net::spawn_connection_threads(
+                            callback.clone(),
+                        ) {
+                            Ok(writer) => OnlinePlayer(writer),
+                            _ => None,
+                        },
+                        ..Default::default()
+                    };
+                }
+                _ => board.borrow_mut().second_player_extension = None,
+            }
         }
     }
 }

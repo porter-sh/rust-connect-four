@@ -16,6 +16,8 @@ use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Propert
 
 use gloo::console::error;
 
+use crate::util::util::SecondPlayerExtension::OnlinePlayer;
+
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
@@ -54,39 +56,13 @@ impl Component for Column {
 
                     for i in (0..BOARD_HEIGHT).rev() {
                         if disks.board_state[i][col_num] == DiskColor::Empty {
-                            if disks.check_winner(DiskData::new(i, col_num, disks.current_player)) {
-                                disks.can_move = false;
-                            }
-
                             disks.board_state[i][col_num] = disks.current_player;
-                            if disks.socket_writer.is_none() {
-                                disks.current_player = if disks.current_player == DiskColor::P1 {
-                                    DiskColor::P2
-                                } else {
-                                    DiskColor::P1
-                                };
-                            }
+                            let new_disk = DiskData::new(i, col_num, disks.current_player);
 
-                            let num_moves = disks.num_moves;
-                            disks.game_history[num_moves] = col_num;
-                            disks.num_moves += 1;
-                            if disks.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
-                                disks.can_move = false;
-                            }
-
-                            if disks.socket_writer.is_some() {
-                                let mut col_num_addition = 0;
-                                if !disks.can_move {
-                                    col_num_addition = ConnectionProtocol::WINNING_MOVE_ADDITION;
-                                } else {
-                                    disks.can_move = false;
-                                }
-                                if let Some(sender) = &disks.socket_writer {
-                                    if let Err(e) = sender.send(col_num as u8 + col_num_addition) {
-                                        error!(format!("{}", e));
-                                    }
-                                }
-                            }
+                            disks.check_winner(new_disk);
+                            disks.update_player();
+                            disks.update_game_history(col_num);
+                            disks.update_server_if_online(col_num);
 
                             return ColumnMessages::Rerender;
                         }
@@ -105,7 +81,7 @@ impl Component for Column {
             ColumnMessages::Rerender => {
                 if !ctx.props().disks.borrow().can_move {
                     // Tell the Board to rerender
-                    ctx.props().rerender_board_callback.emit(()); // MouseEvent type irrelevant
+                    ctx.props().rerender_board_callback.emit(());
                 }
                 true
             }

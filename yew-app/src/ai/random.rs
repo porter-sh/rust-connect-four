@@ -1,5 +1,9 @@
-use crate::ai::ai::Ai;
+use crate::ai::ai::AI;
 
 pub struct RandomAi;
 
-impl Ai for RandomAi { fn get_move(&self) -> u8 { (rand::random::<f32>() * 7) as u8 } }
+impl AI for RandomAi {
+    fn get_move(&self) -> u8 {
+        (rand::random::<f32>() * 7f32) as u8
+    }
+}
