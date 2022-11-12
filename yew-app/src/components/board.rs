@@ -3,7 +3,7 @@
 //! Board also accepts user input when in the middle of a game via Column components
 
 use crate::{
-    ai::random::RandomAi,
+    ai::random::RandomAI,
     components::{column::*, game_control_buttons::GameControlButtons},
     router::{AiRoute, Route},
     util::{board_state::BoardState, net, util::DiskColor},
@@ -158,7 +158,7 @@ impl Board {
                     *board.borrow_mut() = BoardState { second_player_extension:
                         match location.route::<AiRoute>().unwrap_or(AiRoute::Random) {
                             AiRoute::Random => {
-                                AI(Box::new(RandomAi))
+                                AI(Box::new(RandomAI))
                             }
                         },
                         ..Default::default()

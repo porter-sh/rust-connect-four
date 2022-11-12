@@ -4,9 +4,9 @@ use crate::{
 };
 use constants::BOARD_WIDTH;
 
-pub struct RandomAi;
+pub struct RandomAI;
 
-impl AI for RandomAi {
+impl AI for RandomAI {
     fn get_move(&self, board: &Disks) -> usize {
         let mut open_columns = BOARD_WIDTH;
         for col in 0..BOARD_WIDTH {

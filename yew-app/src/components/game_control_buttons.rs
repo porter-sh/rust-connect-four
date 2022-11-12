@@ -58,7 +58,7 @@ impl Component for GameControlButtons {
                     }
                 } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
 
-                // Tell the Board to rerender (MouseEvent type irrelevant)
+                // Tell the Board to rerender
                 rerender_board_callback_clone.emit(());
             }),
         }
