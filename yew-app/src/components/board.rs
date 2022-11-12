@@ -3,8 +3,9 @@
 //! Board also accepts user input when in the middle of a game via Column components
 
 use crate::{
+    ai::random::RandomAi,
     components::{column::*, game_control_buttons::GameControlButtons},
-    router::Route,
+    router::{AiRoute, Route},
     util::{board_state::BoardState, net, util::DiskColor},
 };
 use constants::*;
@@ -136,9 +137,10 @@ impl Board {
         callback: yew::Callback<u8>,
         history: AnyHistory,
     ) {
-        if let Some(route) = history.location().route::<Route>() {
+        let location = history.location();
+        if let Some(route) = location.route::<Route>() {
             match route {
-                Route::LocalMultiplayer | Route::VersusBot => {
+                Route::LocalMultiplayer => {
                     *board.borrow_mut() = Default::default(); // Reset the BoardState when starting a new game
                 }
                 Route::OnlineMultiplayer => {
@@ -151,6 +153,16 @@ impl Board {
                         },
                         ..Default::default()
                     };
+                }
+                Route::VersusBot => {
+                    *board.borrow_mut() = BoardState { second_player_extension:
+                        match location.route::<AiRoute>().unwrap_or(AiRoute::Random) {
+                            AiRoute::Random => {
+                                AI(Box::new(RandomAi))
+                            }
+                        },
+                        ..Default::default()
+                    }
                 }
                 _ => board.borrow_mut().second_player_extension = None,
             }

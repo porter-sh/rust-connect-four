@@ -14,10 +14,6 @@ use constants::*;
 use std::{cell::RefCell, rc::Rc};
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
 
-use gloo::console::error;
-
-use crate::util::util::SecondPlayerExtension::OnlinePlayer;
-
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
@@ -54,15 +50,16 @@ impl Component for Column {
                 ctx.link().callback(move |_| {
                     let disks = &mut board.borrow_mut();
 
-                    for i in (0..BOARD_HEIGHT).rev() {
-                        if disks.board_state[i][col_num] == DiskColor::Empty {
-                            disks.board_state[i][col_num] = disks.current_player;
-                            let new_disk = DiskData::new(i, col_num, disks.current_player);
+                    for row in (0..BOARD_HEIGHT).rev() {
+                        if disks.board_state[row][col_num] == DiskColor::Empty {
+                            disks.board_state[row][col_num] = disks.current_player;
+                            let new_disk = DiskData::new(row, col_num, disks.current_player);
 
                             disks.check_winner(new_disk);
                             disks.update_player();
                             disks.update_game_history(col_num);
                             disks.update_server_if_online(col_num);
+                            disks.run_ai_if_applicable();
 
                             return ColumnMessages::Rerender;
                         }
