@@ -76,7 +76,8 @@ impl Component for Column {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             ColumnMessages::Rerender => {
-                if !ctx.props().disks.borrow().can_move {
+                let disks = ctx.props().disks.borrow();
+                if !disks.can_move || disks.second_player_extension.is_ai() {
                     // Tell the Board to rerender
                     ctx.props().rerender_board_callback.emit(());
                 }

@@ -4,8 +4,6 @@ use crate::{
 };
 use constants::BOARD_WIDTH;
 
-use gloo::console::error;
-
 pub struct RandomAi;
 
 impl AI for RandomAi {
