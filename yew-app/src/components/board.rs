@@ -5,7 +5,7 @@
 use crate::{
     ai::random::RandomAI,
     components::{column::*, game_control_buttons::GameControlButtons},
-    router::{AiRoute, Route},
+    router::{AIRoute, Route},
     util::{board_state::BoardState, net, util::DiskColor},
 };
 use constants::*;
@@ -156,8 +156,8 @@ impl Board {
                 }
                 Route::VersusBot => {
                     *board.borrow_mut() = BoardState { second_player_extension:
-                        match location.route::<AiRoute>().unwrap_or(AiRoute::Random) {
-                            AiRoute::Random => {
+                        match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {
+                            AIRoute::Random => {
                                 AI(Box::new(RandomAI))
                             }
                         },

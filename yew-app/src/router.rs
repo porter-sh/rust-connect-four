@@ -2,7 +2,7 @@
 //!
 //! router also contains a switch_route function to selectively render page specific components / logic
 
-use crate::pages::{ai_select::AiSelect, home::Home, lobby_select::LobbySelect};
+use crate::pages::{ai_select::AISelect, home::Home, lobby_select::LobbySelect};
 use yew::{html, Html};
 use yew_router::prelude::*;
 
@@ -12,9 +12,9 @@ pub fn switch_route(route: &Route) -> Html {
     match route {
         Route::Home => html! {<Home />},
         Route::LobbySelect => html! {<LobbySelect />},
-        Route::AiSelect => html! {<AiSelect />},
+        Route::AISelect => html! {<AISelect />},
         Route::LocalMultiplayer => html! {},
-        Route::VersusBot => html! { <Switch<AiRoute> render={Switch::render(switch_ai_route)} />},
+        Route::VersusBot => html! { <Switch<AIRoute> render={Switch::render(switch_ai_route)} />},
         Route::OnlineMultiplayer => html! {},
         Route::NotFound => html! {
             { "This is not the page you are looking for :( LLLLL" }
@@ -25,9 +25,9 @@ pub fn switch_route(route: &Route) -> Html {
     }
 }
 
-pub fn switch_ai_route(route: &AiRoute) -> Html {
+pub fn switch_ai_route(route: &AIRoute) -> Html {
     match route {
-        AiRoute::Random => html! {},
+        AIRoute::Random => html! {},
     }
 }
 
@@ -39,7 +39,7 @@ pub enum Route {
     #[at("/lobby-select")]
     LobbySelect,
     #[at("/ai-select")]
-    AiSelect,
+    AISelect,
     #[at("/local-multiplayer")]
     LocalMultiplayer,
     #[at("/versus-bot/*")]
@@ -54,7 +54,7 @@ pub enum Route {
 }
 
 #[derive(Clone, Routable, PartialEq)]
-pub enum AiRoute {
+pub enum AIRoute {
     #[at("/versus-bot/random")]
     Random,
 }

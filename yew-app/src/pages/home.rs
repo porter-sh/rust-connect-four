@@ -15,7 +15,7 @@ pub fn home() -> Html {
                 <p class="menu-txt">{"Menu"}</p>
                 <GameButton<Route> text={"Local Multiplayer"} route={Route::LocalMultiplayer} />
                 <GameButton<Route> text={"Online Multiplayer"} route={Route::LobbySelect} />
-                <GameButton<Route> text={"Singleplayer"} route={Route::AiSelect} />
+                <GameButton<Route> text={"Singleplayer"} route={Route::AISelect} />
             </div>
         </>
     }
