@@ -82,7 +82,7 @@ impl Component for Column {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-                {if ctx.props().in_game && ctx.props().disks.borrow().can_move {html!{<button
+                {if ctx.props().in_game && !ctx.props().disks.borrow().board_state.is_col_full(ctx.props().col_num) {html!{<button
                     class={ "btn" }
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                     onclick={ self.onclick.clone() }
