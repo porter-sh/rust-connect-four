@@ -1,13 +1,13 @@
 use crate::{
     ai::ai::AI,
-    util::util::{Disks, DiskColor}
+    util::util::{DiskColor, Disks},
 };
 use constants::BOARD_WIDTH;
 
 pub struct RandomAI;
 
 impl AI for RandomAI {
-    fn get_move(&self, board: &Disks) -> usize {
+    fn get_move(&self, board: &Disks, _: DiskColor) -> usize {
         let mut open_columns = BOARD_WIDTH;
         for col in 0..BOARD_WIDTH {
             if board[0][col] != DiskColor::Empty {

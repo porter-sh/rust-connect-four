@@ -3,7 +3,7 @@
 //! Board also accepts user input when in the middle of a game via Column components
 
 use crate::{
-    ai::random::RandomAI,
+    ai::{perfect::PerfectAI, random::RandomAI},
     components::{column::*, game_control_buttons::GameControlButtons},
     router::{AIRoute, Route},
     util::{board_state::BoardState, net, util::DiskColor},
@@ -40,34 +40,32 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if let BoardMessages::RerenderAndUpdateColumn(mut val) = msg {
+        if let BoardMessages::RerenderAndUpdateColumn(mut msg_val) = msg {
             let mut board = self.board.borrow_mut();
-            if val == ConnectionProtocol::IS_PLAYER_1 {
+            if msg_val == ConnectionProtocol::IS_PLAYER_1 {
                 board.current_player = DiskColor::P1;
-            } else if val == ConnectionProtocol::IS_PLAYER_2 {
+            } else if msg_val == ConnectionProtocol::IS_PLAYER_2 {
                 board.current_player = DiskColor::P2;
-                board.can_move = false;
-            } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION <= val
-                && val <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
+                board.board_state.can_move = false;
+            } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION
+                <= msg_val
+                && msg_val <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
             {
-                val -= ConnectionProtocol::WINNING_MOVE_ADDITION;
+                msg_val -= ConnectionProtocol::WINNING_MOVE_ADDITION;
             } else {
-                board.can_move = true;
+                board.board_state.can_move = true;
             }
-            if ConnectionProtocol::COL_0 <= val && val <= ConnectionProtocol::COL_6 {
-                for row in (0..BOARD_HEIGHT).rev() {
-                    if board.board_state[row][val as usize] == DiskColor::Empty {
-                        board.board_state[row][val as usize] =
-                            if board.current_player == DiskColor::P1 {
-                                DiskColor::P2
-                            } else {
-                                DiskColor::P1
-                            };
-                        break;
-                    }
-                }
+            if ConnectionProtocol::COL_0 <= msg_val && msg_val <= ConnectionProtocol::COL_6 {
+                board.board_state.drop_disk(
+                    msg_val,
+                    if board.current_player == DiskColor::P1 {
+                        DiskColor::P2
+                    } else {
+                        DiskColor::P1
+                    },
+                );
             }
-            log!(format!("Received {}", val));
+            log!(format!("Received {}", msg_val));
         }
         true
     }
@@ -155,11 +153,13 @@ impl Board {
                     };
                 }
                 Route::VersusBot => {
-                    *board.borrow_mut() = BoardState { second_player_extension:
-                        match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {
-                            AIRoute::Random => {
-                                AI(Box::new(RandomAI))
-                            }
+                    *board.borrow_mut() = BoardState {
+                        second_player_extension: match location
+                            .route::<AIRoute>()
+                            .unwrap_or(AIRoute::Random)
+                        {
+                            AIRoute::Random => AI(Box::new(RandomAI)),
+                            AIRoute::Perfect => AI(Box::new(PerfectAI::new(3))),
                         },
                         ..Default::default()
                     }
