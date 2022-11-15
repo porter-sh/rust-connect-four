@@ -46,22 +46,22 @@ impl Component for Board {
                 board.current_player = DiskColor::P1;
             } else if msg_val == ConnectionProtocol::IS_PLAYER_2 {
                 board.current_player = DiskColor::P2;
-                board.board_state.can_move = false;
+                board.can_move = false;
             } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION
                 <= msg_val
                 && msg_val <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
             {
                 msg_val -= ConnectionProtocol::WINNING_MOVE_ADDITION;
             } else {
-                board.board_state.can_move = true;
+                board.can_move = true;
             }
             if ConnectionProtocol::COL_0 <= msg_val && msg_val <= ConnectionProtocol::COL_6 {
                 board.board_state.drop_disk(
                     msg_val,
                     if board.current_player == DiskColor::P1 {
-                        DiskColor::P2
+                        &DiskColor::P2
                     } else {
-                        DiskColor::P1
+                        &DiskColor::P1
                     },
                 );
             }
@@ -85,7 +85,7 @@ impl Component for Board {
         html! {
             <>
                 <div class={ "board-background" }>
-                    {(0..BOARD_WIDTH).into_iter().map(|num| { // Create Columns for the Board
+                    {(0..(BOARD_WIDTH as u8)).into_iter().map(|num| { // Create Columns for the Board
                         html! {
                             <Column col_num={ num } disks={ Rc::clone(&self.board) } in_game={ // Accept input if in game
                                 match route {

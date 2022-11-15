@@ -17,8 +17,8 @@ use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Propert
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
-    pub col_num: usize,                 // Which column of the Board this Column is
-    pub disks: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
+    pub col_num: u8,                           // Which column of the Board this Column is
+    pub disks: Rc<RefCell<BoardState>>,        // Mutably share BoardState across components
     pub in_game: bool, // Whether Column should allow players to click it and drop disks
     pub rerender_board_callback: Callback<()>, // Tells the Board component to rerender
 }
@@ -46,23 +46,16 @@ impl Component for Column {
         Self {
             onclick: {
                 let board = Rc::clone(&ctx.props().disks);
-                let col_num = ctx.props().col_num;
+                let col_num = ctx.props().col_num as u8;
                 ctx.link().callback(move |_| {
                     let disks = &mut board.borrow_mut();
 
-                    for row in (0..BOARD_HEIGHT).rev() {
-                        if disks.board_state[row][col_num] == DiskColor::Empty {
-                            disks.board_state[row][col_num] = disks.current_player;
-                            let new_disk = DiskData::new(row, col_num, disks.current_player);
+                    if !disks.board_state.is_full(col_num) {
+                        disks.make_move(col_num);
+                        disks.update_server_if_online(col_num);
+                        disks.run_ai_if_applicable();
 
-                            disks.check_winner(new_disk);
-                            disks.update_player();
-                            disks.update_game_history(col_num);
-                            disks.update_server_if_online(col_num);
-                            disks.run_ai_if_applicable();
-
-                            return ColumnMessages::Rerender;
-                        }
+                        return ColumnMessages::Rerender;
                     }
 
                     ColumnMessages::NoChange
@@ -97,7 +90,7 @@ impl Component for Column {
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                     onclick={ self.onclick.clone() }
                 />}} else {html!{}}}
-                {(0..BOARD_HEIGHT).into_iter().map(|row_num| html! { // Display all disks in the Column
+                {(0..(BOARD_HEIGHT as u8)).into_iter().map(|row_num| html! { // Display all disks in the Column
                     <div
                         class={classes!(ctx.props().style_of_disk(row_num))}
                         style={format!("grid-column-start: {}; grid-row-start: {};", ctx.props().col_num + 1, row_num + 1)}
@@ -109,8 +102,8 @@ impl Component for Column {
 }
 
 impl ColumnProperties {
-    fn style_of_disk(&self, row: usize) -> String {
-        match self.disks.borrow().board_state[row][self.col_num] {
+    fn style_of_disk(&self, row: u8) -> String {
+        match self.disks.borrow().board_state.get_disk(row, self.col_num) {
             DiskColor::Empty => "disk-empty",
             DiskColor::P1 => "disk-p1",
             DiskColor::P2 => "disk-p2",

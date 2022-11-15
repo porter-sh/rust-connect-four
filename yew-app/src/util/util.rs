@@ -9,16 +9,15 @@ use tokio::sync::mpsc::UnboundedSender;
 /// 2D array of player disks to internally store the board state
 // pub type Disks1 = [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT];
 
+#[derive(PartialEq)]
 pub struct Disks {
     position: [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT],
-    pub can_move: bool,
 }
 
 impl Default for Disks {
     fn default() -> Self {
         Self {
             position: [[DiskColor::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
-            can_move: true,
         }
     }
 }
@@ -26,33 +25,64 @@ impl Default for Disks {
 /// Implements functions to check if the game has been won
 impl Disks {
     /// Returns if the game is won by dropping a disk in the location stored by DiskData
-    pub fn check_winner(&mut self, new_disk: DiskData) {
+    pub fn check_winner(&mut self, col: u8, color: &DiskColor) -> bool {
+        let row = self.first_opening_in_col(col);
         // check for a vertical win
-        if new_disk.row < BOARD_HEIGHT - 3
-            && self.position[new_disk.row + 1][new_disk.col] == new_disk.color
-            && self.position[new_disk.row + 2][new_disk.col] == new_disk.color
-            && self.position[new_disk.row + 3][new_disk.col] == new_disk.color
+        if (row as usize) < BOARD_HEIGHT - 3
+            && self.position[(row + 1) as usize][col as usize] == *color
+            && self.position[(row + 2) as usize][col as usize] == *color
+            && self.position[(row + 3) as usize][col as usize] == *color
         {
-            self.can_move = false;
+            return true;
         }
+        // data structure to hold useful information about the new piece
+        let new_disk = DiskData::new(row, col, *color);
         // check for a win in other directions
-        else if Self::check_lateral(&self, &new_disk)
+        if Self::check_lateral(&self, &new_disk)
             || Self::check_right_diag(&self, &new_disk)
             || Self::check_left_diag(&self, &new_disk)
         {
-            self.can_move = false;
+            return true;
         }
+        // no win found
+        false
     }
 
-    pub fn drop_disk(&mut self, col: u8, color: DiskColor) -> Result<(), ()> {
+    pub fn drop_disk(&mut self, col: u8, color: &DiskColor) -> Result<(), ()> {
         let col = col as usize;
         for row in (0..BOARD_HEIGHT).rev() {
             if self.position[row][col] == DiskColor::Empty {
-                self.position[row][col] = color;
+                self.position[row][col] = *color;
                 return Ok(());
             }
         }
         Err(())
+    }
+
+    pub fn get_disk(&self, row: u8, col: u8) -> DiskColor {
+        self.position[row as usize][col as usize]
+    }
+
+    pub fn get_num_disks(&self) -> u8 {
+        let mut num_disks = 0u8;
+        for col in 0..(BOARD_WIDTH as u8) {
+            num_disks += (BOARD_HEIGHT as u8) - self.first_opening_in_col(col);
+        }
+        num_disks
+    }
+
+    pub fn is_full(&self, col: u8) -> bool {
+        self.first_opening_in_col(col) == 0 as u8
+    }
+
+    /// Returns the first empty row in the column, or 0 if the column is full
+    fn first_opening_in_col(&self, col: u8) -> u8 {
+        for row in (0..(BOARD_HEIGHT as u8)).rev() {
+            if self.position[row as usize][col as usize] == DiskColor::Empty {
+                return row;
+            }
+        }
+        0
     }
 
     /// Helper function to check_winner
@@ -60,7 +90,9 @@ impl Disks {
     fn check_lateral(&self, new_disk: &DiskData) -> bool {
         let mut left_count = 0;
         while left_count < new_disk.left_range {
-            if self.position[new_disk.row][new_disk.col - 1 - left_count] != new_disk.color {
+            if self.position[new_disk.row as usize][(new_disk.col - 1 - left_count) as usize]
+                != new_disk.color
+            {
                 break;
             }
             left_count += 1;
@@ -71,7 +103,9 @@ impl Disks {
 
         let mut right_count = 0;
         while right_count < new_disk.right_range {
-            if self.position[new_disk.row][new_disk.col + 1 + right_count] != new_disk.color {
+            if self.position[new_disk.row as usize][(new_disk.col + 1 + right_count) as usize]
+                != new_disk.color
+            {
                 break;
             }
             right_count += 1;
@@ -87,7 +121,8 @@ impl Disks {
     fn check_right_diag(&self, new_disk: &DiskData) -> bool {
         let mut top_left_count = 0;
         while top_left_count < min(new_disk.up_range, new_disk.left_range) {
-            if self.position[new_disk.row - 1 - top_left_count][new_disk.col - 1 - top_left_count]
+            if self.position[(new_disk.row - 1 - top_left_count) as usize]
+                [(new_disk.col - 1 - top_left_count) as usize]
                 != new_disk.color
             {
                 break;
@@ -100,8 +135,8 @@ impl Disks {
 
         let mut bottom_right_count = 0;
         while bottom_right_count < min(new_disk.down_range, new_disk.right_range) {
-            if self.position[new_disk.row + 1 + bottom_right_count]
-                [new_disk.col + 1 + bottom_right_count]
+            if self.position[(new_disk.row + 1 + bottom_right_count) as usize]
+                [(new_disk.col + 1 + bottom_right_count) as usize]
                 != new_disk.color
             {
                 break;
@@ -119,7 +154,8 @@ impl Disks {
     fn check_left_diag(&self, new_disk: &DiskData) -> bool {
         let mut top_right_count = 0;
         while top_right_count < min(new_disk.up_range, new_disk.right_range) {
-            if self.position[new_disk.row - 1 - top_right_count][new_disk.col + 1 + top_right_count]
+            if self.position[(new_disk.row - 1 - top_right_count) as usize]
+                [(new_disk.col + 1 + top_right_count) as usize]
                 != new_disk.color
             {
                 break;
@@ -132,8 +168,8 @@ impl Disks {
 
         let mut bottom_left_count = 0;
         while bottom_left_count < min(new_disk.down_range, new_disk.left_range) {
-            if self.position[new_disk.row + 1 + bottom_left_count]
-                [new_disk.col - 1 - bottom_left_count]
+            if self.position[(new_disk.row + 1 + bottom_left_count) as usize]
+                [(new_disk.col - 1 - bottom_left_count) as usize]
                 != new_disk.color
             {
                 break;
@@ -149,26 +185,26 @@ impl Disks {
 
 /// DiskData contains fields that help determine looping over the board to determine if a dropped disk wins the game
 pub struct DiskData {
-    pub row: usize,
-    pub col: usize,
+    pub row: u8,
+    pub col: u8,
     pub color: DiskColor,
-    pub left_range: usize,
-    pub right_range: usize,
-    pub up_range: usize,
-    pub down_range: usize,
+    pub left_range: u8,
+    pub right_range: u8,
+    pub up_range: u8,
+    pub down_range: u8,
 }
 
 impl DiskData {
     /// Create DiskData and store how far in each direction we should loop
-    pub fn new(row: usize, col: usize, color: DiskColor) -> Self {
+    pub fn new(row: u8, col: u8, color: DiskColor) -> Self {
         Self {
             row,
             col,
             color,
             left_range: min(3, col),
-            right_range: min(3, BOARD_WIDTH - col - 1),
+            right_range: min(3, BOARD_WIDTH as u8 - col - 1),
             up_range: min(3, row),
-            down_range: min(3, BOARD_HEIGHT - row - 1),
+            down_range: min(3, BOARD_HEIGHT as u8 - row - 1),
         }
     }
 }
