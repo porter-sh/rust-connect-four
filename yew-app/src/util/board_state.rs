@@ -1,10 +1,8 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
-use crate::util::util::{DiskColor, DiskData, Disks, SecondPlayerExtension};
+use crate::util::util::{DiskColor, Disks, SecondPlayerExtension};
 use constants::*;
-use std::cmp::min;
 
 use gloo::console::error;
-
 use SecondPlayerExtension::{None, OnlinePlayer, AI};
 
 /// BoardState stores the internal board representation, as well as other state data that other
@@ -40,12 +38,12 @@ impl PartialEq for BoardState {
 impl Default for BoardState {
     fn default() -> Self {
         Self {
+            board_state: Disks::default(),
             can_move: true,
             current_player: DiskColor::P1,
             game_history: [0u8; BOARD_WIDTH * BOARD_HEIGHT],
             num_moves: 0usize,
             second_player_extension: None,
-            ..Default::default()
         }
     }
 }
@@ -53,8 +51,10 @@ impl Default for BoardState {
 /// Implements functions to check if the game has been won
 impl BoardState {
     pub fn make_move(&mut self, col: u8) {
-        self.board_state.drop_disk(col, &self.current_player);
-        self.update_can_move_if_won(col);
+        self.update_can_move_if_will_win(col);
+        self.board_state
+            .drop_disk(col, &self.current_player)
+            .unwrap();
         self.update_player();
         self.update_game_history(col);
     }
@@ -79,7 +79,7 @@ impl BoardState {
         if self.can_move && self.second_player_extension.is_ai() {
             if let AI(ai) = &self.second_player_extension {
                 let col = ai.get_move(&self.board_state, self.current_player);
-                if !self.board_state.is_full(col) {
+                if !self.board_state.is_col_full(col) {
                     self.make_move(col);
                 }
             }
@@ -104,7 +104,7 @@ impl BoardState {
         }
     }
 
-    fn update_can_move_if_won(&mut self, col: u8) {
+    fn update_can_move_if_will_win(&mut self, col: u8) {
         if self.board_state.check_winner(col, &self.current_player) {
             self.can_move = false;
         }

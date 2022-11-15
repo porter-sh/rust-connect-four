@@ -56,14 +56,12 @@ impl Component for Board {
                 board.can_move = true;
             }
             if ConnectionProtocol::COL_0 <= msg_val && msg_val <= ConnectionProtocol::COL_6 {
-                board.board_state.drop_disk(
-                    msg_val,
-                    if board.current_player == DiskColor::P1 {
-                        &DiskColor::P2
-                    } else {
-                        &DiskColor::P1
-                    },
-                );
+                let color = if board.current_player == DiskColor::P1 {
+                    DiskColor::P2
+                } else {
+                    DiskColor::P1
+                };
+                board.board_state.drop_disk(msg_val, &color).unwrap();
             }
             log!(format!("Received {}", msg_val));
         }

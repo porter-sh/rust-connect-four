@@ -2,7 +2,6 @@ use crate::{
     router::Route,
     util::{board_state::BoardState, util::DiskColor},
 };
-use constants::BOARD_HEIGHT;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, Properties};
 use yew_router::prelude::*;
@@ -49,13 +48,7 @@ impl Component for GameControlButtons {
                     let num_moves = disks.num_moves;
 
                     let col = disks.game_history[num_moves]; // Get the column the last move was made in
-                    for row in 0..BOARD_HEIGHT {
-                        if disks.board_state[row][col] != DiskColor::Empty {
-                            // First nonempty space is the last move in this column
-                            disks.board_state[row][col] = DiskColor::Empty;
-                            break;
-                        }
-                    }
+                    disks.board_state.rm_disk_from_col(col); // Remove the disk from the columns
                 } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
 
                 // Tell the Board to rerender

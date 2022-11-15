@@ -1,10 +1,8 @@
 use crate::{
     ai::ai::AI,
-    util::util::{DiskColor, DiskData, Disks},
+    util::util::{DiskColor, Disks},
 };
 use constants::*;
-
-use std::cmp::min;
 
 pub struct PerfectAI {
     max_moves_look_ahead: u8,
@@ -34,7 +32,7 @@ impl PerfectAI {
     }
 
     fn place_disk_in_copy(board: &Disks, col: u8, player: &DiskColor) -> Option<Disks> {
-        let mut new_board: Disks = *board.clone();
+        let mut new_board: Disks = board.clone();
         if let Ok(_) = new_board.drop_disk(col, player) {
             return Some(new_board);
         }
@@ -42,7 +40,7 @@ impl PerfectAI {
     }
 
     fn is_winning_move(board: &Disks, col: u8, player: DiskColor) -> Option<bool> {
-        if !board.is_full(col) {
+        if !board.is_col_full(col) {
             return Some(board.check_winner(col, &player));
         }
         None
@@ -74,8 +72,8 @@ impl PerfectAI {
         player: DiskColor,
         num_moves_into_game: u8,
         num_moves_look_ahead: u8,
-        min_self_score: i8,
-        min_opponent_score: i8,
+        mut min_self_score: i8,
+        mut min_opponent_score: i8,
     ) -> i8 {
         if num_moves_into_game as usize == BOARD_HEIGHT * BOARD_WIDTH {
             return 0;

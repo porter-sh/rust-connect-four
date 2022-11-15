@@ -9,7 +9,7 @@ use tokio::sync::mpsc::UnboundedSender;
 /// 2D array of player disks to internally store the board state
 // pub type Disks1 = [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT];
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Disks {
     position: [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT],
 }
@@ -25,7 +25,7 @@ impl Default for Disks {
 /// Implements functions to check if the game has been won
 impl Disks {
     /// Returns if the game is won by dropping a disk in the location stored by DiskData
-    pub fn check_winner(&mut self, col: u8, color: &DiskColor) -> bool {
+    pub fn check_winner(&self, col: u8, color: &DiskColor) -> bool {
         let row = self.first_opening_in_col(col);
         // check for a vertical win
         if (row as usize) < BOARD_HEIGHT - 3
@@ -49,10 +49,9 @@ impl Disks {
     }
 
     pub fn drop_disk(&mut self, col: u8, color: &DiskColor) -> Result<(), ()> {
-        let col = col as usize;
         for row in (0..BOARD_HEIGHT).rev() {
-            if self.position[row][col] == DiskColor::Empty {
-                self.position[row][col] = *color;
+            if self.position[row][col as usize] == DiskColor::Empty {
+                self.position[row][col as usize] = *color;
                 return Ok(());
             }
         }
@@ -71,8 +70,37 @@ impl Disks {
         num_disks
     }
 
-    pub fn is_full(&self, col: u8) -> bool {
-        self.first_opening_in_col(col) == 0 as u8
+    pub fn is_col_full(&self, col: u8) -> bool {
+        self.position[0][col as usize] != DiskColor::Empty
+    }
+
+    pub fn is_full(&self) -> bool {
+        for col in 0..(BOARD_WIDTH as u8) {
+            if !self.is_col_full(col) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Gets the number of columns that are not full
+    pub fn num_open_cols(&self) -> u8 {
+        let mut num_open_cols = 0u8;
+        for col in 0..(BOARD_WIDTH as u8) {
+            if !self.is_col_full(col) {
+                num_open_cols += 1;
+            }
+        }
+        num_open_cols
+    }
+
+    pub fn rm_disk_from_col(&mut self, col: u8) {
+        for row in 0..BOARD_HEIGHT {
+            if self.position[row][col as usize] != DiskColor::Empty {
+                self.position[row][col as usize] = DiskColor::Empty;
+                return;
+            }
+        }
     }
 
     /// Returns the first empty row in the column, or 0 if the column is full

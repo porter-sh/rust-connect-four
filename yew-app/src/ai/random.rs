@@ -7,19 +7,14 @@ use constants::BOARD_WIDTH;
 pub struct RandomAI;
 
 impl AI for RandomAI {
-    fn get_move(&self, board: &Disks, _: DiskColor) -> usize {
-        let mut open_columns = BOARD_WIDTH;
-        for col in 0..BOARD_WIDTH {
-            if board[0][col] != DiskColor::Empty {
-                open_columns -= 1;
-            }
-        }
+    fn get_move(&self, board: &Disks, _: DiskColor) -> u8 {
+        let open_columns = board.num_open_cols();
         if open_columns == 0 {
             return 0;
         }
         let mut idx = (rand::random::<f32>() * open_columns as f32) as usize;
-        for col in 0..BOARD_WIDTH {
-            if board[0][col] == DiskColor::Empty {
+        for col in 0..(BOARD_WIDTH as u8) {
+            if !board.is_col_full(col) {
                 if idx == 0 {
                     return col;
                 }

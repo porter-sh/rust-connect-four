@@ -6,10 +6,7 @@
 //!
 //! When not in a game or if the game is won, Column will not accept player input
 
-use crate::util::{
-    board_state::BoardState,
-    util::{DiskColor, DiskData},
-};
+use crate::util::{board_state::BoardState, util::DiskColor};
 use constants::*;
 use std::{cell::RefCell, rc::Rc};
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
@@ -50,7 +47,7 @@ impl Component for Column {
                 ctx.link().callback(move |_| {
                     let disks = &mut board.borrow_mut();
 
-                    if !disks.board_state.is_full(col_num) {
+                    if !disks.board_state.is_col_full(col_num) {
                         disks.make_move(col_num);
                         disks.update_server_if_online(col_num);
                         disks.run_ai_if_applicable();
