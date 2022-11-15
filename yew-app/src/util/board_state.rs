@@ -50,8 +50,9 @@ impl Default for BoardState {
 
 /// Implements functions to check if the game has been won
 impl BoardState {
+    /// Does everything required for the next player to make a move in the given column.
     pub fn make_move(&mut self, col: u8) {
-        self.update_can_move_if_will_win(col);
+        self.update_can_move_if_will_win(col); // must be called before dropping the disk
         self.board_state
             .drop_disk(col, &self.current_player)
             .unwrap();
@@ -59,6 +60,8 @@ impl BoardState {
         self.update_game_history(col);
     }
 
+    /// If playing online, send a message to the server containing the move, and whether
+    /// the game was won.
     pub fn update_server_if_online(&mut self, selected_col: u8) {
         if self.second_player_extension.is_online_player() {
             let mut col_num_addition = 0;
@@ -75,6 +78,7 @@ impl BoardState {
         }
     }
 
+    /// If playing singleplayer, give the AI a turn.
     pub fn run_ai_if_applicable(&mut self) {
         if self.can_move && self.second_player_extension.is_ai() {
             if let AI(ai) = &self.second_player_extension {
@@ -86,6 +90,7 @@ impl BoardState {
         }
     }
 
+    /// If not online, set the current player to the next player.
     fn update_player(&mut self) {
         if !self.second_player_extension.is_online_player() {
             self.current_player = match self.current_player {
@@ -96,6 +101,7 @@ impl BoardState {
         }
     }
 
+    /// Update the history of moves with the next move.
     fn update_game_history(&mut self, selected_col: u8) {
         self.game_history[self.num_moves] = selected_col;
         self.num_moves += 1;
@@ -104,6 +110,7 @@ impl BoardState {
         }
     }
 
+    /// Check if the game has been won, and if so, set can_move to false.
     fn update_can_move_if_will_win(&mut self, col: u8) {
         if self.board_state.check_winner(col, &self.current_player) {
             self.can_move = false;

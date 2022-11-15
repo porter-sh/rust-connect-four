@@ -1,26 +1,23 @@
-use crate::{
-    ai::ai::AI,
-    util::util::{DiskColor, Disks},
-};
+use super::{ai::AI, util};
+use crate::util::util::{DiskColor, Disks};
 use constants::BOARD_WIDTH;
 
 pub struct RandomAI;
 
 impl AI for RandomAI {
+    /// Gets a random move from the available columns.
     fn get_move(&self, board: &Disks, _: DiskColor) -> u8 {
-        let open_columns = board.num_open_cols();
-        if open_columns == 0 {
-            return 0;
-        }
-        let mut idx = (rand::random::<f32>() * open_columns as f32) as usize;
+        // find which columns are open
+        let mut available_cols = Vec::with_capacity(BOARD_WIDTH);
         for col in 0..(BOARD_WIDTH as u8) {
             if !board.is_col_full(col) {
-                if idx == 0 {
-                    return col;
-                }
-                idx -= 1;
+                available_cols.push(col);
             }
         }
-        panic!("Fix the random AI, should have returned a value");
+        // chose one of the available columns at random
+        match util::random_col_from_options(&available_cols) {
+            Some(col) => *col,
+            None => panic!("Fix the random AI, should have returned a value"),
+        }
     }
 }

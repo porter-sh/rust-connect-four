@@ -7,7 +7,6 @@ use std::cmp::min;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// 2D array of player disks to internally store the board state
-// pub type Disks1 = [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT];
 
 #[derive(PartialEq, Clone)]
 pub struct Disks {
@@ -22,7 +21,10 @@ impl Default for Disks {
     }
 }
 
-/// Implements functions to check if the game has been won
+/// Manages the data about the disks. Manages everything through an interface
+/// for calculation of who won, which columns are full, empty, how many disks
+/// there are etc. This way it is easy for us to make optimizations later without
+/// needing to change how the interface is used.
 impl Disks {
     /// Returns if the game is won by dropping a disk in the location stored by DiskData
     pub fn check_winner(&self, col: u8, color: &DiskColor) -> bool {
@@ -48,20 +50,25 @@ impl Disks {
         false
     }
 
+    /// Puts a disk of the given color in the given column
     pub fn drop_disk(&mut self, col: u8, color: &DiskColor) -> Result<(), ()> {
+        // find the first empty row in the column
         for row in (0..BOARD_HEIGHT).rev() {
             if self.position[row][col as usize] == DiskColor::Empty {
                 self.position[row][col as usize] = *color;
                 return Ok(());
             }
         }
+        // no empty row found
         Err(())
     }
 
+    /// Returns the color of the disk at the given location
     pub fn get_disk(&self, row: u8, col: u8) -> DiskColor {
         self.position[row as usize][col as usize]
     }
 
+    /// Returns the total number of disks on the board
     pub fn get_num_disks(&self) -> u8 {
         let mut num_disks = 0u8;
         for col in 0..(BOARD_WIDTH as u8) {
@@ -70,10 +77,12 @@ impl Disks {
         num_disks
     }
 
+    /// Returns whether the given column is is full (has no open slots)
     pub fn is_col_full(&self, col: u8) -> bool {
         self.position[0][col as usize] != DiskColor::Empty
     }
 
+    /// Returns whether the entire board is full (has no open slots)
     pub fn is_full(&self) -> bool {
         for col in 0..(BOARD_WIDTH as u8) {
             if !self.is_col_full(col) {
@@ -94,6 +103,7 @@ impl Disks {
         num_open_cols
     }
 
+    /// Takes the top disk off the given column
     pub fn rm_disk_from_col(&mut self, col: u8) {
         for row in 0..BOARD_HEIGHT {
             if self.position[row][col as usize] != DiskColor::Empty {
@@ -102,6 +112,8 @@ impl Disks {
             }
         }
     }
+
+    ///// PRIVATE METHODS /////
 
     /// Returns the first empty row in the column, or 0 if the column is full
     fn first_opening_in_col(&self, col: u8) -> u8 {
@@ -256,10 +268,12 @@ impl DiskColor {
     }
 }
 
+/// Enum to augment the game with either a server connection, or an AI,
+/// depending on what game mode is selected.
 pub enum SecondPlayerExtension {
-    OnlinePlayer(UnboundedSender<u8>),
-    AI(Box<dyn ai::AI>),
-    None,
+    OnlinePlayer(UnboundedSender<u8>), // channel to send column selection to the server
+    AI(Box<dyn ai::AI>),               // AI for singleplayer
+    None,                              // local multiplayer
 }
 
 use SecondPlayerExtension::{None, OnlinePlayer, AI};
