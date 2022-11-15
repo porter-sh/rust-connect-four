@@ -13,8 +13,8 @@ pub struct BoardState {
     pub board_state: Disks,
     pub can_move: bool,
     pub current_player: DiskColor,
-    pub game_history: [u8; BOARD_WIDTH * BOARD_HEIGHT],
-    pub num_moves: usize,
+    pub game_history: [u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize],
+    pub num_moves: u8,
     pub second_player_extension: SecondPlayerExtension,
 }
 
@@ -41,8 +41,8 @@ impl Default for BoardState {
             board_state: Disks::default(),
             can_move: true,
             current_player: DiskColor::P1,
-            game_history: [0u8; BOARD_WIDTH * BOARD_HEIGHT],
-            num_moves: 0usize,
+            game_history: [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize],
+            num_moves: 0u8,
             second_player_extension: None,
         }
     }
@@ -52,10 +52,8 @@ impl Default for BoardState {
 impl BoardState {
     /// Does everything required for the next player to make a move in the given column.
     pub fn make_move(&mut self, col: u8) {
-        self.update_can_move_if_will_win(col); // must be called before dropping the disk
-        self.board_state
-            .drop_disk(col, &self.current_player)
-            .unwrap();
+        self.board_state.drop_disk(col).unwrap();
+        self.update_can_move_if_won(); // must be called before dropping the disk
         self.update_player();
         self.update_game_history(col);
     }
@@ -103,7 +101,7 @@ impl BoardState {
 
     /// Update the history of moves with the next move.
     fn update_game_history(&mut self, selected_col: u8) {
-        self.game_history[self.num_moves] = selected_col;
+        self.game_history[self.num_moves as usize] = selected_col;
         self.num_moves += 1;
         if self.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
             self.can_move = false;
@@ -111,8 +109,8 @@ impl BoardState {
     }
 
     /// Check if the game has been won, and if so, set can_move to false.
-    fn update_can_move_if_will_win(&mut self, col: u8) {
-        if self.board_state.check_winner(col, &self.current_player) {
+    fn update_can_move_if_won(&mut self) {
+        if self.board_state.check_last_drop_won() {
             self.can_move = false;
         }
     }

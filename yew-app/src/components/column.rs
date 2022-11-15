@@ -82,7 +82,8 @@ impl Component for Column {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-                {if ctx.props().in_game && ctx.props().disks.borrow().can_move && !ctx.props().disks.borrow().board_state.is_col_full(ctx.props().col_num) {html!{<button
+                {if ctx.props().in_game && ctx.props().disks.borrow().can_move
+                        && !ctx.props().disks.borrow().board_state.is_col_full(ctx.props().col_num) {html!{<button
                     class={ "btn" }
                     style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                     onclick={ self.onclick.clone() }
@@ -90,7 +91,7 @@ impl Component for Column {
                 {(0..(BOARD_HEIGHT as u8)).into_iter().map(|row_num| html! { // Display all disks in the Column
                     <div
                         class={classes!(ctx.props().style_of_disk(row_num))}
-                        style={format!("grid-column-start: {}; grid-row-start: {};", ctx.props().col_num + 1, row_num + 1)}
+                        style={format!("grid-column-start: {}; grid-row-start: {};", ctx.props().col_num + 1, BOARD_HEIGHT - row_num)}
                     />
                 }).collect::<Html>()}
             </>

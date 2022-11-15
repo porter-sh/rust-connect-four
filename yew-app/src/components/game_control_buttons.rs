@@ -47,7 +47,7 @@ impl Component for GameControlButtons {
 
                     let num_moves = disks.num_moves;
 
-                    let col = disks.game_history[num_moves]; // Get the column the last move was made in
+                    let col = disks.game_history[num_moves as usize]; // Get the column the last move was made in
                     disks.board_state.rm_disk_from_col(col); // Remove the disk from the columns
                 } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
 

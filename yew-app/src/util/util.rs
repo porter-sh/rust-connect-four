@@ -10,13 +10,17 @@ use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(PartialEq, Clone)]
 pub struct Disks {
-    position: [[DiskColor; BOARD_WIDTH]; BOARD_HEIGHT],
+    position: u64,
+    mask: u64,
+    is_p1_turn: bool,
 }
 
 impl Default for Disks {
     fn default() -> Self {
         Self {
-            position: [[DiskColor::Empty; BOARD_WIDTH]; BOARD_HEIGHT],
+            position: 0,
+            mask: 0,
+            is_p1_turn: true,
         }
     }
 }
@@ -26,46 +30,59 @@ impl Default for Disks {
 /// there are etc. This way it is easy for us to make optimizations later without
 /// needing to change how the interface is used.
 impl Disks {
-    /// Returns if the game is won by dropping a disk in the location stored by DiskData
-    pub fn check_winner(&self, col: u8, color: &DiskColor) -> bool {
-        let row = self.first_opening_in_col(col);
-        // check for a vertical win
-        if (row as usize) < BOARD_HEIGHT - 3
-            && self.position[(row + 1) as usize][col as usize] == *color
-            && self.position[(row + 2) as usize][col as usize] == *color
-            && self.position[(row + 3) as usize][col as usize] == *color
-        {
+    /// Returns if the other player has won
+    pub fn check_last_drop_won(&self) -> bool {
+        let other_player_position = self.position ^ self.mask;
+        // check horizontal wins
+        let mut temp: u64 = other_player_position & (other_player_position >> (BOARD_HEIGHT + 1));
+        if (temp & (temp >> (2 * (BOARD_HEIGHT + 1)))) != 0 {
             return true;
         }
-        // data structure to hold useful information about the new piece
-        let new_disk = DiskData::new(row, col, *color);
-        // check for a win in other directions
-        if Self::check_lateral(&self, &new_disk)
-            || Self::check_right_diag(&self, &new_disk)
-            || Self::check_left_diag(&self, &new_disk)
-        {
+
+        // check \ diagonal wins
+        temp = other_player_position & (other_player_position >> BOARD_HEIGHT);
+        if (temp & (temp >> (2 * BOARD_HEIGHT))) != 0 {
             return true;
         }
-        // no win found
-        false
+
+        // check / diagonal wins
+        temp = other_player_position & (other_player_position >> (BOARD_HEIGHT + 2));
+        if (temp & (temp >> (2 * (BOARD_HEIGHT + 2)))) != 0 {
+            return true;
+        }
+
+        // check vertical wins
+        temp = other_player_position & (other_player_position >> 1);
+        if (temp & (temp >> 2)) != 0 {
+            return true;
+        }
+
+        return false;
     }
 
     /// Puts a disk of the given color in the given column
-    pub fn drop_disk(&mut self, col: u8, color: &DiskColor) -> Result<(), ()> {
-        // find the first empty row in the column
-        for row in (0..BOARD_HEIGHT).rev() {
-            if self.position[row][col as usize] == DiskColor::Empty {
-                self.position[row][col as usize] = *color;
-                return Ok(());
-            }
+    pub fn drop_disk(&mut self, col: u8) -> Result<(), ()> {
+        if self.is_col_full(col) {
+            Err(())
+        } else {
+            self.is_p1_turn = !self.is_p1_turn;
+            self.position ^= self.mask;
+            self.mask |= self.mask + (1 << (col * (BOARD_HEIGHT + 1)));
+            Ok(())
         }
-        // no empty row found
-        Err(())
     }
 
     /// Returns the color of the disk at the given location
     pub fn get_disk(&self, row: u8, col: u8) -> DiskColor {
-        self.position[row as usize][col as usize]
+        let bit = self.mask & ((1 << row) << (col * (BOARD_HEIGHT + 1)));
+        if bit == 0 {
+            return DiskColor::Empty;
+        }
+        return if ((self.position & bit) != 0) == self.is_p1_turn {
+            DiskColor::P1
+        } else {
+            DiskColor::P2
+        };
     }
 
     /// Returns the total number of disks on the board
@@ -79,7 +96,7 @@ impl Disks {
 
     /// Returns whether the given column is is full (has no open slots)
     pub fn is_col_full(&self, col: u8) -> bool {
-        self.position[0][col as usize] != DiskColor::Empty
+        self.mask & ((1 << BOARD_HEIGHT - 1) << (col * (BOARD_HEIGHT + 1))) != 0
     }
 
     /// Returns whether the entire board is full (has no open slots)
@@ -105,121 +122,24 @@ impl Disks {
 
     /// Takes the top disk off the given column
     pub fn rm_disk_from_col(&mut self, col: u8) {
-        for row in 0..BOARD_HEIGHT {
-            if self.position[row][col as usize] != DiskColor::Empty {
-                self.position[row][col as usize] = DiskColor::Empty;
-                return;
-            }
-        }
+        let row = self.first_opening_in_col(col);
+        self.mask ^= (1 << row - 1) << (col * (BOARD_HEIGHT + 1));
+        self.position ^= self.mask;
+        self.is_p1_turn = !self.is_p1_turn;
     }
 
     ///// PRIVATE METHODS /////
 
     /// Returns the first empty row in the column, or 0 if the column is full
     fn first_opening_in_col(&self, col: u8) -> u8 {
-        for row in (0..(BOARD_HEIGHT as u8)).rev() {
-            if self.position[row as usize][col as usize] == DiskColor::Empty {
+        let mut idx = 1 << (col * (BOARD_HEIGHT + 1));
+        for row in 0..BOARD_HEIGHT {
+            if self.mask & idx == 0 {
                 return row;
             }
+            idx <<= 1;
         }
-        0
-    }
-
-    /// Helper function to check_winner
-    /// Returns whether a horizontal win occured
-    fn check_lateral(&self, new_disk: &DiskData) -> bool {
-        let mut left_count = 0;
-        while left_count < new_disk.left_range {
-            if self.position[new_disk.row as usize][(new_disk.col - 1 - left_count) as usize]
-                != new_disk.color
-            {
-                break;
-            }
-            left_count += 1;
-        }
-        if left_count == 3 {
-            return true;
-        }
-
-        let mut right_count = 0;
-        while right_count < new_disk.right_range {
-            if self.position[new_disk.row as usize][(new_disk.col + 1 + right_count) as usize]
-                != new_disk.color
-            {
-                break;
-            }
-            right_count += 1;
-            if left_count + right_count == 3 {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Helper function to check_winner
-    /// Returns whether a right diagonal win occured
-    fn check_right_diag(&self, new_disk: &DiskData) -> bool {
-        let mut top_left_count = 0;
-        while top_left_count < min(new_disk.up_range, new_disk.left_range) {
-            if self.position[(new_disk.row - 1 - top_left_count) as usize]
-                [(new_disk.col - 1 - top_left_count) as usize]
-                != new_disk.color
-            {
-                break;
-            }
-            top_left_count += 1;
-        }
-        if top_left_count == 3 {
-            return true;
-        }
-
-        let mut bottom_right_count = 0;
-        while bottom_right_count < min(new_disk.down_range, new_disk.right_range) {
-            if self.position[(new_disk.row + 1 + bottom_right_count) as usize]
-                [(new_disk.col + 1 + bottom_right_count) as usize]
-                != new_disk.color
-            {
-                break;
-            }
-            bottom_right_count += 1;
-            if top_left_count + bottom_right_count == 3 {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Helper function to check_winner
-    /// Returns whether a left diagonal win occured
-    fn check_left_diag(&self, new_disk: &DiskData) -> bool {
-        let mut top_right_count = 0;
-        while top_right_count < min(new_disk.up_range, new_disk.right_range) {
-            if self.position[(new_disk.row - 1 - top_right_count) as usize]
-                [(new_disk.col + 1 + top_right_count) as usize]
-                != new_disk.color
-            {
-                break;
-            }
-            top_right_count += 1;
-        }
-        if top_right_count == 3 {
-            return true;
-        }
-
-        let mut bottom_left_count = 0;
-        while bottom_left_count < min(new_disk.down_range, new_disk.left_range) {
-            if self.position[(new_disk.row + 1 + bottom_left_count) as usize]
-                [(new_disk.col - 1 - bottom_left_count) as usize]
-                != new_disk.color
-            {
-                break;
-            }
-            bottom_left_count += 1;
-            if top_right_count + bottom_left_count == 3 {
-                return true;
-            }
-        }
-        false
+        BOARD_HEIGHT
     }
 }
 

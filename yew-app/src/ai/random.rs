@@ -8,7 +8,7 @@ impl AI for RandomAI {
     /// Gets a random move from the available columns.
     fn get_move(&self, board: &Disks, _: DiskColor) -> u8 {
         // find which columns are open
-        let mut available_cols = Vec::with_capacity(BOARD_WIDTH);
+        let mut available_cols = Vec::with_capacity(BOARD_WIDTH as usize);
         for col in 0..(BOARD_WIDTH as u8) {
             if !board.is_col_full(col) {
                 available_cols.push(col);

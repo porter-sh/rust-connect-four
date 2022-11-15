@@ -1,7 +1,7 @@
 //! constants contains relavent board constants
 
-pub const BOARD_HEIGHT: usize = 6; // number of rows in the board
-pub const BOARD_WIDTH: usize = 7; // number of columns in the board
+pub const BOARD_HEIGHT: u8 = 6; // number of rows in the board
+pub const BOARD_WIDTH: u8 = 7; // number of columns in the board
 pub const WEBSOCKET_ADDRESS: &str = "ws://127.0.0.1:8081";
 
 pub struct ConnectionProtocol;

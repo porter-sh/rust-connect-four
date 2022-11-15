@@ -13,8 +13,8 @@ impl PerfectAI {
         // find max score
         let mut max = scores[0];
         for col in 1..BOARD_WIDTH {
-            if scores[col] > max {
-                max = scores[col];
+            if scores[col as usize] > max {
+                max = scores[col as usize];
             }
         }
         // if every column is filled
@@ -22,7 +22,7 @@ impl PerfectAI {
             return 0;
         }
         // find all of the best columns
-        let mut best_cols = Vec::with_capacity(BOARD_WIDTH);
+        let mut best_cols = Vec::with_capacity(BOARD_WIDTH as usize);
         for col in 0..(BOARD_WIDTH as u8) {
             if scores[col as usize] == max {
                 best_cols.push(col);
@@ -36,18 +36,18 @@ impl PerfectAI {
     }
 
     /// Returns a copy of the board a disk of the given color dropped in the given column.
-    fn place_disk_in_copy(board: &Disks, col: u8, player: &DiskColor) -> Option<Disks> {
+    fn place_disk_in_copy(board: &Disks, col: u8) -> Option<Disks> {
         let mut new_board: Disks = board.clone();
-        if let Ok(_) = new_board.drop_disk(col, player) {
+        if let Ok(_) = new_board.drop_disk(col) {
             return Some(new_board);
         }
         None
     }
 
     /// Returns whether dropping a disk in the given column would result in a win.
-    fn is_winning_move(board: &Disks, col: u8, player: DiskColor) -> Option<bool> {
+    fn is_winning_move(board: &Disks, col: u8) -> Option<bool> {
         if !board.is_col_full(col) {
-            return Some(board.check_winner(col, &player));
+            return Some(board.check_last_drop_won());
         }
         None
     }
@@ -72,13 +72,13 @@ impl PerfectAI {
         mut min_self_score: i8,
         mut min_opponent_score: i8,
     ) -> i8 {
-        if num_moves_into_game as usize == BOARD_HEIGHT * BOARD_WIDTH {
+        if num_moves_into_game == BOARD_HEIGHT * BOARD_WIDTH {
             return 0;
         }
 
         for col in 0..(BOARD_WIDTH as u8) {
-            if let Some(_) = Self::place_disk_in_copy(board, col, &player) {
-                if Self::is_winning_move(board, col, player).unwrap() {
+            if let Some(_) = Self::place_disk_in_copy(board, col) {
+                if Self::is_winning_move(board, col).unwrap() {
                     return (BOARD_HEIGHT * BOARD_WIDTH) as i8 - num_moves_into_game as i8;
                 }
             }
@@ -98,7 +98,7 @@ impl PerfectAI {
         }
 
         for col in 0..(BOARD_WIDTH as u8) {
-            if let Some(board) = Self::place_disk_in_copy(board, col, &player) {
+            if let Some(board) = Self::place_disk_in_copy(board, col) {
                 let score = Self::get_score(
                     &board,
                     if player == DiskColor::P1 {
@@ -127,9 +127,9 @@ impl PerfectAI {
 
 impl AI for PerfectAI {
     fn get_move(&self, board: &Disks, player: DiskColor) -> u8 {
-        let mut score = [-100; BOARD_WIDTH];
+        let mut score = [-100; BOARD_WIDTH as usize];
         for col in 0..(BOARD_WIDTH as u8) {
-            if let Some(board) = Self::place_disk_in_copy(board, col, &player) {
+            if let Some(board) = Self::place_disk_in_copy(board, col) {
                 score[col as usize] = Self::get_score(
                     &board,
                     player,
