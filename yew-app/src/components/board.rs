@@ -152,7 +152,7 @@ impl Board {
                             .unwrap_or(AIRoute::Random)
                         {
                             AIRoute::Random => AI(Box::new(RandomAI)),
-                            AIRoute::Perfect => AI(Box::new(PerfectAI::new(3))),
+                            AIRoute::Perfect => AI(Box::new(PerfectAI::new(10))),
                         },
                         ..Default::default()
                     }

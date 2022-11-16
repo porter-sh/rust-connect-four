@@ -1,6 +1,7 @@
 use super::{ai::AI, util};
 use crate::util::util::{DiskColor, Disks};
 use constants::*;
+use gloo::console::log;
 
 pub struct PerfectAI {
     max_moves_look_ahead: u8,
@@ -9,7 +10,7 @@ pub struct PerfectAI {
 impl PerfectAI {
     /// Choose which column to drop the disk in given their scores.
     /// If there are multiple columns with the same score, choose one at random.
-    fn random_move_from_scores(scores: [i8; 7]) -> u8 {
+    fn random_move_from_scores(scores: [i8; BOARD_WIDTH as usize]) -> u8 {
         // find max score
         let mut max = scores[0];
         for col in 1..BOARD_WIDTH {
@@ -17,6 +18,9 @@ impl PerfectAI {
                 max = scores[col as usize];
             }
         }
+        log!(
+            "Scores: ", scores[0], scores[1], scores[2], scores[3], scores[4], scores[5], scores[6]
+        );
         // if every column is filled
         if max == -100 {
             return 0;
@@ -44,14 +48,6 @@ impl PerfectAI {
         None
     }
 
-    /// Returns whether dropping a disk in the given column would result in a win.
-    fn is_winning_move(board: &Disks, col: u8) -> Option<bool> {
-        if !board.is_col_full(col) {
-            return Some(board.check_last_drop_won());
-        }
-        None
-    }
-
     ////////////////////////////////////////////////////////////////
 
     pub fn new(max_moves_look_ahead: u8) -> Self {
@@ -61,6 +57,7 @@ impl PerfectAI {
     }
 
     /// Get the score of some board state for a given player.
+    /// Score = 43 - num_moves_until_end, or 0 for draw. If the player cannot win, score = -score.
     /// Recursive alpha-beta pruning algorithm, taking advantage of the fact
     /// that the opponent's score is the opposite of the player's score to
     /// avoid checking paths that could not be better than a previous path.
@@ -72,19 +69,22 @@ impl PerfectAI {
         mut min_self_score: i8,
         mut min_opponent_score: i8,
     ) -> i8 {
-        if num_moves_into_game == BOARD_HEIGHT * BOARD_WIDTH {
+        /*if num_moves_into_game == BOARD_HEIGHT * BOARD_WIDTH {
             return 0;
-        }
+        }*/
 
         for col in 0..(BOARD_WIDTH as u8) {
-            if let Some(_) = Self::place_disk_in_copy(board, col) {
-                if Self::is_winning_move(board, col).unwrap() {
-                    return (BOARD_HEIGHT * BOARD_WIDTH) as i8 - num_moves_into_game as i8;
+            if let Some(copy) = Self::place_disk_in_copy(board, col) {
+                if copy.check_last_drop_won() {
+                    // log!("Num moves into game: ", num_moves_into_game);
+                    // log!((BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8);
+                    return (BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8;
                 }
             }
         }
 
         if num_moves_look_ahead == 1 {
+            log!("Looked ahead far enough.");
             return 0;
         }
 
@@ -99,7 +99,7 @@ impl PerfectAI {
 
         for col in 0..(BOARD_WIDTH as u8) {
             if let Some(board) = Self::place_disk_in_copy(board, col) {
-                let score = Self::get_score(
+                let score = -Self::get_score(
                     &board,
                     if player == DiskColor::P1 {
                         DiskColor::P2
@@ -128,16 +128,26 @@ impl PerfectAI {
 impl AI for PerfectAI {
     fn get_move(&self, board: &Disks, player: DiskColor) -> u8 {
         let mut score = [-100; BOARD_WIDTH as usize];
+        let num_moves_into_game = board.get_num_disks();
         for col in 0..(BOARD_WIDTH as u8) {
             if let Some(board) = Self::place_disk_in_copy(board, col) {
-                score[col as usize] = Self::get_score(
-                    &board,
-                    player,
-                    board.get_num_disks(),
-                    self.max_moves_look_ahead,
-                    -100,
-                    100,
-                );
+                if board.check_last_drop_won() {
+                    score[col as usize] =
+                        (BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8;
+                } else {
+                    score[col as usize] = -Self::get_score(
+                        &board,
+                        if player == DiskColor::P1 {
+                            DiskColor::P2
+                        } else {
+                            DiskColor::P1
+                        },
+                        num_moves_into_game + 1,
+                        self.max_moves_look_ahead,
+                        -100,
+                        100,
+                    );
+                }
             }
         }
 

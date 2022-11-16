@@ -89,7 +89,7 @@ impl Disks {
     pub fn get_num_disks(&self) -> u8 {
         let mut num_disks = 0u8;
         for col in 0..(BOARD_WIDTH as u8) {
-            num_disks += (BOARD_HEIGHT as u8) - self.first_opening_in_col(col);
+            num_disks += self.first_opening_in_col(col);
         }
         num_disks
     }
@@ -130,7 +130,7 @@ impl Disks {
 
     ///// PRIVATE METHODS /////
 
-    /// Returns the first empty row in the column, or 0 if the column is full
+    /// Returns the first empty row in the column, or BOARD_HEIGHT if the column is full
     fn first_opening_in_col(&self, col: u8) -> u8 {
         let mut idx = 1 << (col * (BOARD_HEIGHT + 1));
         for row in 0..BOARD_HEIGHT {
