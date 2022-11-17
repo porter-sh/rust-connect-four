@@ -6,16 +6,12 @@ use crate::{
     ai::{perfect::PerfectAI, random::RandomAI},
     components::{column::*, game_control_buttons::GameControlButtons},
     router::{AIRoute, Route},
-    util::{board_state::BoardState, net, util::DiskColor},
+    util::board_state::BoardState,
 };
 use constants::*;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
 use yew_router::{prelude::*, scope_ext::HistoryHandle};
-
-use gloo::console::log;
-
-use crate::util::util::SecondPlayerExtension::{None, OnlinePlayer, SurvivalMode, AI};
 
 pub enum BoardMessages {
     Rerender,
@@ -41,24 +37,7 @@ impl Component for Board {
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         if let BoardMessages::RerenderAndUpdateColumn(mut msg_val) = msg {
-            let mut board = self.board.borrow_mut();
-            if msg_val == ConnectionProtocol::IS_PLAYER_1 {
-                board.current_player = DiskColor::P1;
-            } else if msg_val == ConnectionProtocol::IS_PLAYER_2 {
-                board.current_player = DiskColor::P2;
-                board.can_move = false;
-            } else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION
-                <= msg_val
-                && msg_val <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
-            {
-                msg_val -= ConnectionProtocol::WINNING_MOVE_ADDITION;
-            } else {
-                board.can_move = true;
-            }
-            if ConnectionProtocol::COL_0 <= msg_val && msg_val <= ConnectionProtocol::COL_6 {
-                board.board_state.drop_disk(msg_val).unwrap(); // TODO: Handle error
-            }
-            log!(format!("Received {}", msg_val));
+            (*self.board.borrow_mut()).update_state_from_second_player_msg(msg_val);
         }
         true
     }
@@ -70,7 +49,8 @@ impl Component for Board {
         let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
         let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
 
-        /* if route == Route::OnlineMultiplayer {
+        /* TODO: lobby selection for online:
+        if route == Route::OnlineMultiplayer {
             let query_string = ctx.link().location().expect("no location").search();
             let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
         } */
@@ -102,7 +82,10 @@ impl Component for Board {
 
 impl Board {
     pub fn new(ctx: &Context<Board>) -> Self {
-        let board_origin = Rc::new(RefCell::new(Default::default()));
+        let board_origin = Rc::new(RefCell::new(BoardState::new(
+            ctx.link()
+                .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num)),
+        )));
         Self {
             board: Rc::clone(&board_origin),
             _history_handle: Self::get_history_handle(ctx, board_origin),
@@ -117,48 +100,37 @@ impl Board {
             .add_history_listener(ctx.link().callback(move |history: AnyHistory| {
                 let board_clone = Rc::clone(&board);
                 // Will rerender the Board
-                Self::on_reroute(board_clone, callback.clone(), history);
+                Self::on_reroute(board_clone, history.location());
                 BoardMessages::Rerender
             }))
             .unwrap()
     }
 
-    fn on_reroute(
-        board: Rc<RefCell<BoardState>>,
-        callback: yew::Callback<u8>,
-        history: AnyHistory,
-    ) {
-        let location = history.location();
+    fn on_reroute(board: Rc<RefCell<BoardState>>, location: AnyLocation) {
         if let Some(route) = location.route::<Route>() {
             match route {
                 Route::LocalMultiplayer => {
-                    *board.borrow_mut() = Default::default(); // Reset the BoardState when starting a new game
+                    board.borrow_mut().reset(); // Reset the BoardState when starting a new game
                 }
                 Route::OnlineMultiplayer => {
-                    *board.borrow_mut() = BoardState {
-                        second_player_extension: match net::spawn_connection_threads(
-                            callback.clone(),
-                        ) {
-                            Ok(writer) => OnlinePlayer(writer),
-                            _ => None,
-                        },
-                        ..Default::default()
-                    };
+                    board.borrow_mut().init_online();
                 }
                 Route::VersusBot => {
-                    *board.borrow_mut() = BoardState {
-                        second_player_extension: match location
-                            .route::<AIRoute>()
-                            .unwrap_or(AIRoute::Random)
-                        {
-                            AIRoute::Random => AI(Box::new(RandomAI)),
-                            AIRoute::Perfect => AI(Box::new(PerfectAI::new(14))),
-                            AIRoute::Survival => SurvivalMode(PerfectAI::new(1)),
-                        },
-                        ..Default::default()
-                    }
+                    match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {
+                        AIRoute::Random => board.borrow_mut().init_ai(Box::new(RandomAI)),
+                        AIRoute::Perfect => {
+                            board.borrow_mut().init_ai(Box::new(PerfectAI::new(10)))
+                        }
+                        AIRoute::Survival => board
+                            .borrow_mut()
+                            .init_survival(Box::new(PerfectAI::new(1))),
+                        _ => board.borrow_mut().reset(),
+                    };
                 }
-                _ => board.borrow_mut().second_player_extension = None,
+                _ => board
+                    .borrow_mut()
+                    .second_player_extension
+                    .remove_extension(),
             }
         }
     }

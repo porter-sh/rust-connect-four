@@ -50,7 +50,7 @@ impl Component for Column {
                         let mut rerender_early = false;
                         {
                             let mut disks = board.borrow_mut();
-                            disks.make_move(col_num);
+                            disks.make_move(col_num).unwrap();
                             disks.update_server_if_online(col_num);
                             if disks.second_player_extension.is_ai()
                                 || disks.second_player_extension.is_survival_mode()
