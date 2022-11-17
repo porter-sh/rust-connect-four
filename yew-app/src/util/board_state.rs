@@ -80,7 +80,7 @@ impl BoardState {
     /// If playing singleplayer, give the AI a turn.
     pub fn run_ai_if_applicable(&mut self) {
         if self.second_player_extension.is_ai() || self.second_player_extension.is_survival_mode() {
-            if let AI(ai) = &self.second_player_extension {
+            if let AI(ai) = &mut self.second_player_extension {
                 if self.can_move {
                     let col = ai.get_move(&self.board_state, self.current_player);
                     if !self.board_state.is_col_full(col) {

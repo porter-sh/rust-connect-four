@@ -1,14 +1,15 @@
-use super::{ai::AI, util};
+use super::{ai::AI, position_lookup_table::PositionLookupTable, util};
 use crate::util::util::{DiskColor, Disks};
 use constants::*;
 use gloo::console::log;
 
 pub struct PerfectAI {
     max_moves_look_ahead: u8,
+    position_lookup_table: PositionLookupTable,
 }
 
 impl PerfectAI {
-    const column_order: [u8; BOARD_WIDTH as usize] = [3, 2, 4, 1, 5, 0, 6];
+    const COLUMN_ORDER: [u8; BOARD_WIDTH as usize] = [3, 2, 4, 1, 5, 0, 6];
     /// Choose which column to drop the disk in given their scores.
     /// If there are multiple columns with the same score, choose one at random.
     fn random_move_from_scores(scores: [i8; BOARD_WIDTH as usize]) -> u8 {
@@ -19,9 +20,9 @@ impl PerfectAI {
                 max = scores[col as usize];
             }
         }
-        log!(
-            "Scores: ", scores[0], scores[1], scores[2], scores[3], scores[4], scores[5], scores[6]
-        );
+        // log!(
+        //     "Scores: ", scores[0], scores[1], scores[2], scores[3], scores[4], scores[5], scores[6]
+        // );
         // if every column is filled
         if max == -100 {
             return 0;
@@ -54,6 +55,7 @@ impl PerfectAI {
     pub fn new(max_moves_look_ahead: u8) -> Self {
         Self {
             max_moves_look_ahead,
+            position_lookup_table: PositionLookupTable::new(1000), // should be slightly more than 64 Mb
         }
     }
 
@@ -67,6 +69,7 @@ impl PerfectAI {
     /// that the opponent's score is the opposite of the player's score to
     /// avoid checking paths that could not be better than a previous path.
     fn get_score(
+        &mut self,
         board: &Disks,
         player: DiskColor,
         num_moves_into_game: u8,
@@ -74,10 +77,7 @@ impl PerfectAI {
         mut min_self_score: i8,
         mut min_opponent_score: i8,
     ) -> i8 {
-        /*if num_moves_into_game == BOARD_HEIGHT * BOARD_WIDTH {
-            return 0;
-        }*/
-
+        // check if the current player can win on this move
         for col in 0..(BOARD_WIDTH as u8) {
             if let Some(copy) = Self::place_disk_in_copy(board, col) {
                 if copy.check_last_drop_won() {
@@ -93,17 +93,23 @@ impl PerfectAI {
         }
 
         let min_possible_opponent_score =
-            (BOARD_HEIGHT * BOARD_WIDTH) as i8 - 1 - num_moves_into_game as i8;
+            if let Some(min_opponent_score) = self.position_lookup_table.get(board) {
+                min_opponent_score
+            } else {
+                (BOARD_HEIGHT * BOARD_WIDTH) as i8 - 1 - num_moves_into_game as i8
+            };
+
         if min_possible_opponent_score < min_opponent_score {
             min_opponent_score = min_possible_opponent_score;
+            // prune;
             if min_self_score >= min_opponent_score {
                 return min_opponent_score;
             }
         }
 
         for col in 0..(BOARD_WIDTH as usize) {
-            if let Some(board) = Self::place_disk_in_copy(board, Self::column_order[col]) {
-                let score = -Self::get_score(
+            if let Some(board) = Self::place_disk_in_copy(board, Self::COLUMN_ORDER[col]) {
+                let score = -self.get_score(
                     &board,
                     if player == DiskColor::P1 {
                         DiskColor::P2
@@ -125,12 +131,13 @@ impl PerfectAI {
             }
         }
 
+        self.position_lookup_table.insert(board, min_self_score);
         min_self_score
     }
 }
 
 impl AI for PerfectAI {
-    fn get_move(&self, board: &Disks, player: DiskColor) -> u8 {
+    fn get_move(&mut self, board: &Disks, player: DiskColor) -> u8 {
         let mut score = [-100; BOARD_WIDTH as usize];
         let num_moves_into_game = board.get_num_disks();
         for col in 0..(BOARD_WIDTH as u8) {
@@ -139,7 +146,7 @@ impl AI for PerfectAI {
                     score[col as usize] =
                         (BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8;
                 } else {
-                    score[col as usize] = -Self::get_score(
+                    score[col as usize] = -self.get_score(
                         &board,
                         if player == DiskColor::P1 {
                             DiskColor::P2
@@ -154,7 +161,7 @@ impl AI for PerfectAI {
                 }
             }
         }
-
+        log!(self.position_lookup_table.get_num_entries());
         Self::random_move_from_scores(score)
     }
 }
