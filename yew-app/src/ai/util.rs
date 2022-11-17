@@ -1,3 +1,4 @@
+//! Utility functions to be used by multiple AI implementations.
 use rand::seq::SliceRandom;
 
 /// Given a list of which columns to choose from, return one at random.

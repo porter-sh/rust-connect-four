@@ -1,3 +1,8 @@
+//! Contains definition of GameControlButtons.
+//! GameControlButtons are the buttons underneath the game board that allow
+//! for user input outside of the game, like "Quit Game" and "Undo".
+//! All of the buttons are created in this file, to make it easy to have
+//! them all within the same <div> element.
 use crate::{
     router::Route,
     util::{board_state::BoardState, util::DiskColor},

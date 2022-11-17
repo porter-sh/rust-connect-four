@@ -1,3 +1,5 @@
+//! Contains the RandomAI implementation.
+//! RandomAI randomly chooses any open column.
 use super::{ai::AI, util};
 use crate::util::util::{DiskColor, Disks};
 use constants::BOARD_WIDTH;

@@ -3,6 +3,7 @@
 pub const BOARD_HEIGHT: u8 = 6; // number of rows in the board
 pub const BOARD_WIDTH: u8 = 7; // number of columns in the board
 pub const WEBSOCKET_ADDRESS: &str = "ws://127.0.0.1:8081";
+pub const LOOKUP_TABLE_SIZE: usize = 1000; // 1000 should be slightly more than 64 MB
 
 pub struct ConnectionProtocol;
 

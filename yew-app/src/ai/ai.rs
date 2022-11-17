@@ -1,3 +1,4 @@
+//! Contains the AI trait, which defines the interface for the AI implementations.
 use crate::util::util::{DiskColor, Disks};
 
 pub trait AI {

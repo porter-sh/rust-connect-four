@@ -1,3 +1,7 @@
+//! Contains the PerfectAI implementation.
+//! At a high level, this AI finds the best move(s) by looking at all possible moves
+//! until the end of the game (or however far we set), then picks the move that will
+//! guarantee the soonest win.
 use super::{ai::AI, position_lookup_table::PositionLookupTable, util};
 use crate::util::util::{DiskColor, Disks};
 use constants::*;
@@ -5,6 +9,7 @@ use gloo::console::log;
 
 pub struct PerfectAI {
     max_moves_look_ahead: u8,
+    // Stores a hashmap of recent calculated board states, to avoid recalculating
     position_lookup_table: PositionLookupTable,
 }
 
@@ -13,7 +18,7 @@ impl PerfectAI {
     /// Choose which column to drop the disk in given their scores.
     /// If there are multiple columns with the same score, choose one at random.
     fn random_move_from_scores(scores: [i8; BOARD_WIDTH as usize]) -> u8 {
-        // find max score
+        // find the highest score out of all the columns
         let mut max = scores[0];
         for col in 1..BOARD_WIDTH {
             if scores[col as usize] > max {
@@ -27,7 +32,7 @@ impl PerfectAI {
         if max == -100 {
             return 0;
         }
-        // find all of the best columns
+        // find all of the columns that have the highest score
         let mut best_cols = Vec::with_capacity(BOARD_WIDTH as usize);
         for col in 0..(BOARD_WIDTH as u8) {
             if scores[col as usize] == max {
@@ -55,10 +60,11 @@ impl PerfectAI {
     pub fn new(max_moves_look_ahead: u8) -> Self {
         Self {
             max_moves_look_ahead,
-            position_lookup_table: PositionLookupTable::new(1000), // should be slightly more than 64 Mb
+            position_lookup_table: PositionLookupTable::new(LOOKUP_TABLE_SIZE),
         }
     }
 
+    /// Used for survival mode, to make the AI harder each round.
     pub fn increment_look_ahead(&mut self) {
         self.max_moves_look_ahead += 1;
     }
@@ -88,6 +94,7 @@ impl PerfectAI {
             }
         }
 
+        // if we've already searched deep enough, stop
         if num_moves_look_ahead == 1 {
             return 0;
         }
@@ -96,17 +103,19 @@ impl PerfectAI {
             if let Some(min_opponent_score) = self.position_lookup_table.get(board) {
                 min_opponent_score
             } else {
-                (BOARD_HEIGHT * BOARD_WIDTH) as i8 - 1 - num_moves_into_game as i8
+                (BOARD_HEIGHT * BOARD_WIDTH) as i8 - (num_moves_into_game + 1) as i8
             };
 
         if min_possible_opponent_score < min_opponent_score {
             min_opponent_score = min_possible_opponent_score;
-            // prune;
+            // prune; we want to minimize the opponent's score, so if we can't do any better,
+            // we can stop searching this path
             if min_self_score >= min_opponent_score {
                 return min_opponent_score;
             }
         }
 
+        // calculate the score of each possible move
         for col in 0..(BOARD_WIDTH as usize) {
             if let Some(board) = Self::place_disk_in_copy(board, Self::COLUMN_ORDER[col]) {
                 let score = -self.get_score(
@@ -137,15 +146,20 @@ impl PerfectAI {
 }
 
 impl AI for PerfectAI {
+    /// Returns which column the AI would drop a disk into.
     fn get_move(&mut self, board: &Disks, player: DiskColor) -> u8 {
+        // start each column with a bad score
         let mut score = [-100; BOARD_WIDTH as usize];
         let num_moves_into_game = board.get_num_disks();
+        // calculate the actual score of each column
         for col in 0..(BOARD_WIDTH as u8) {
             if let Some(board) = Self::place_disk_in_copy(board, col) {
+                // if going in one column results in a win, set the score to the best possible score.
                 if board.check_last_drop_won() {
                     score[col as usize] =
                         (BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8;
                 } else {
+                    // otherwise, calculate the score of the board state after the move
                     score[col as usize] = -self.get_score(
                         &board,
                         if player == DiskColor::P1 {
@@ -162,6 +176,7 @@ impl AI for PerfectAI {
             }
         }
         log!(self.position_lookup_table.get_num_entries());
+        // Chose any one of the best columns at random (if there are multiple).
         Self::random_move_from_scores(score)
     }
 }
