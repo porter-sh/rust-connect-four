@@ -8,6 +8,7 @@ pub struct PerfectAI {
 }
 
 impl PerfectAI {
+    const column_order: [u8; BOARD_WIDTH as usize] = [3, 2, 4, 1, 5, 0, 6];
     /// Choose which column to drop the disk in given their scores.
     /// If there are multiple columns with the same score, choose one at random.
     fn random_move_from_scores(scores: [i8; BOARD_WIDTH as usize]) -> u8 {
@@ -56,6 +57,10 @@ impl PerfectAI {
         }
     }
 
+    pub fn increment_look_ahead(&mut self) {
+        self.max_moves_look_ahead += 1;
+    }
+
     /// Get the score of some board state for a given player.
     /// Score = 43 - num_moves_until_end, or 0 for draw. If the player cannot win, score = -score.
     /// Recursive alpha-beta pruning algorithm, taking advantage of the fact
@@ -84,7 +89,6 @@ impl PerfectAI {
         }
 
         if num_moves_look_ahead == 1 {
-            log!("Looked ahead far enough.");
             return 0;
         }
 
@@ -97,8 +101,8 @@ impl PerfectAI {
             }
         }
 
-        for col in 0..(BOARD_WIDTH as u8) {
-            if let Some(board) = Self::place_disk_in_copy(board, col) {
+        for col in 0..(BOARD_WIDTH as usize) {
+            if let Some(board) = Self::place_disk_in_copy(board, Self::column_order[col]) {
                 let score = -Self::get_score(
                     &board,
                     if player == DiskColor::P1 {

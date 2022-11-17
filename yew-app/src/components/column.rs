@@ -67,7 +67,10 @@ impl Component for Column {
         match msg {
             ColumnMessages::Rerender => {
                 let disks = ctx.props().disks.borrow();
-                if !disks.can_move || disks.second_player_extension.is_ai() {
+                if !disks.can_move
+                    || disks.second_player_extension.is_ai()
+                    || disks.second_player_extension.is_survival_mode()
+                {
                     // Tell the Board to rerender
                     ctx.props().rerender_board_callback.emit(());
                 }

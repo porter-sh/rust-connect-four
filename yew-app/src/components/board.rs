@@ -15,7 +15,7 @@ use yew_router::{prelude::*, scope_ext::HistoryHandle};
 
 use gloo::console::log;
 
-use crate::util::util::SecondPlayerExtension::{None, OnlinePlayer, AI};
+use crate::util::util::SecondPlayerExtension::{None, OnlinePlayer, SurvivalMode, AI};
 
 pub enum BoardMessages {
     Rerender,
@@ -152,7 +152,8 @@ impl Board {
                             .unwrap_or(AIRoute::Random)
                         {
                             AIRoute::Random => AI(Box::new(RandomAI)),
-                            AIRoute::Perfect => AI(Box::new(PerfectAI::new(10))),
+                            AIRoute::Perfect => AI(Box::new(PerfectAI::new(14))),
+                            AIRoute::Survival => SurvivalMode(PerfectAI::new(1)),
                         },
                         ..Default::default()
                     }

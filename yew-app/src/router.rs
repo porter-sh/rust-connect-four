@@ -29,6 +29,7 @@ pub fn switch_ai_route(route: &AIRoute) -> Html {
     match route {
         AIRoute::Random => html! {},
         AIRoute::Perfect => html! {},
+        AIRoute::Survival => html! {},
     }
 }
 
@@ -60,4 +61,6 @@ pub enum AIRoute {
     Random,
     #[at("/versus-bot/perfect")]
     Perfect,
+    #[at("/versus-bot/survival")]
+    Survival,
 }

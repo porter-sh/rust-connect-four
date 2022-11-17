@@ -18,6 +18,7 @@ pub fn ai_select() -> Html {
                 <p class="menu-txt">{"Choose AI"}</p>
                 <GameButton<AIRoute> text={"Random"} route={AIRoute::Random} />
                 <GameButton<AIRoute> text={"Perfect"} route={AIRoute::Perfect} />
+                <GameButton<AIRoute> text={"Survival"} route={AIRoute::Survival} />
                 <GameButton<Route> text={"Back"} route={Route::Home} />
             </div>
         </>

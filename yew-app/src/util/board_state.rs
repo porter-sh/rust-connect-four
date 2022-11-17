@@ -1,9 +1,10 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
+use crate::ai::ai::AI as AITrait;
 use crate::util::util::{DiskColor, Disks, SecondPlayerExtension};
 use constants::*;
 
 use gloo::console::error;
-use SecondPlayerExtension::{None, OnlinePlayer, AI};
+use SecondPlayerExtension::{None, OnlinePlayer, SurvivalMode, AI};
 
 /// BoardState stores the internal board representation, as well as other state data that other
 /// board components use
@@ -78,11 +79,26 @@ impl BoardState {
 
     /// If playing singleplayer, give the AI a turn.
     pub fn run_ai_if_applicable(&mut self) {
-        if self.can_move && self.second_player_extension.is_ai() {
+        if self.second_player_extension.is_ai() || self.second_player_extension.is_survival_mode() {
             if let AI(ai) = &self.second_player_extension {
-                let col = ai.get_move(&self.board_state, self.current_player);
-                if !self.board_state.is_col_full(col) {
-                    self.make_move(col);
+                if self.can_move {
+                    let col = ai.get_move(&self.board_state, self.current_player);
+                    if !self.board_state.is_col_full(col) {
+                        self.make_move(col);
+                    }
+                }
+            } else if let SurvivalMode(ai) = &mut self.second_player_extension {
+                if self.can_move {
+                    let col = ai.get_move(&self.board_state, self.current_player);
+                    if !self.board_state.is_col_full(col) {
+                        self.make_move(col);
+                    }
+                } else {
+                    ai.increment_look_ahead();
+                    self.board_state = Disks::default();
+                    self.game_history = [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
+                    self.num_moves = 0;
+                    self.can_move = true;
                 }
             }
         }

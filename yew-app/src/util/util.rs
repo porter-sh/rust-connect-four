@@ -1,6 +1,6 @@
 //! util contains helper structs for the player disks
 
-use crate::ai::ai;
+use crate::ai::{ai, perfect::PerfectAI};
 use constants::*;
 use std::cmp::min;
 
@@ -10,8 +10,8 @@ use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(PartialEq, Clone)]
 pub struct Disks {
-    position: u64,
-    mask: u64,
+    position: u64, // records the location of disks for the current player as 1s
+    mask: u64,     // records the location of all disks as 1s
     is_p1_turn: bool,
 }
 
@@ -123,9 +123,17 @@ impl Disks {
     /// Takes the top disk off the given column
     pub fn rm_disk_from_col(&mut self, col: u8) {
         let row = self.first_opening_in_col(col);
-        self.mask ^= (1 << row - 1) << (col * (BOARD_HEIGHT + 1));
-        self.position ^= self.mask;
-        self.is_p1_turn = !self.is_p1_turn;
+        if row > 0 {
+            self.mask ^= (1 << row - 1) << (col * (BOARD_HEIGHT + 1));
+            self.position ^= self.mask;
+            self.is_p1_turn = !self.is_p1_turn;
+        }
+    }
+
+    /// Returns a unique key representing the current board state,
+    /// used for the position lookup table.
+    pub fn get_key(&self) -> u64 {
+        self.mask + self.position
     }
 
     ///// PRIVATE METHODS /////
@@ -193,10 +201,11 @@ impl DiskColor {
 pub enum SecondPlayerExtension {
     OnlinePlayer(UnboundedSender<u8>), // channel to send column selection to the server
     AI(Box<dyn ai::AI>),               // AI for singleplayer
-    None,                              // local multiplayer
+    SurvivalMode(PerfectAI),
+    None, // local multiplayer
 }
 
-use SecondPlayerExtension::{None, OnlinePlayer, AI};
+use SecondPlayerExtension::{None, OnlinePlayer, SurvivalMode, AI};
 
 impl SecondPlayerExtension {
     pub fn is_online_player(&self) -> bool {
@@ -208,6 +217,12 @@ impl SecondPlayerExtension {
     pub fn is_ai(&self) -> bool {
         match self {
             AI(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_survival_mode(&self) -> bool {
+        match self {
+            SurvivalMode(_) => true,
             _ => false,
         }
     }
