@@ -6,7 +6,7 @@ fn main() {
     // println!("cargo:rerun-if-changed=cpplib/board.cpp");
     // cc::Build::new().cpp(true).file("cpplib/board.cpp").file("cpplib/safe_board.cpp").compile("board");
     // bindgen::Builder::default().header("cpplib/board.hpp").generate().expect("Failed to generate bindings.").write_to_file(
-    //     "./src/bindings2.rs"
+    //     "./src/bindings.rs"
     // ).expect("Failed to write bindings to a .rs file.");
 
 }
