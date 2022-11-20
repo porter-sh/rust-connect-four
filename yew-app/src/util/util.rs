@@ -1,10 +1,7 @@
 //! util contains helper structs for the player disks
 
-use crate::ai::{ai, perfect::PerfectAI};
 use constants::*;
 use std::cmp::min;
-
-use tokio::sync::mpsc::UnboundedSender;
 
 /// 2D array of player disks to internally store the board state
 

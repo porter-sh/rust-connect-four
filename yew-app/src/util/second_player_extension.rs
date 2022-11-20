@@ -1,12 +1,15 @@
 use tokio::sync::mpsc::UnboundedSender;
 use yew::Callback;
 
-use crate::ai::{ai, perfect::PerfectAI};
+use crate::{
+    ai::ai,
+    util::net
+};
 
 pub enum SecondPlayerExtensionMode {
     OnlinePlayer(UnboundedSender<u8>), // vs another person over the internet
     AI(Box<dyn ai::AI>),               // singleplayer vs bot
-    SurvivalMode(PerfectAI),           // AI mode, but gets progressively harder
+    SurvivalMode(Box<dyn ai::SurvivalAI>),           // AI mode, but gets progressively harder
     None,                              // local multiplayer
 }
 
@@ -28,34 +31,37 @@ pub struct SecondPlayerExtension {
     rerender_board_callback: Callback<u8>,
 }
 
-use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
+use SecondPlayerExtensionMode::{None, AI, OnlinePlayer, SurvivalMode};
 
 impl SecondPlayerExtension {
     pub fn new(rerender_board_callback: Callback<u8>) -> Self {
         Self {
-            mode: SecondPlayerExtensionMode::None,
+            mode: None,
             rerender_board_callback,
         }
     }
 
     pub fn remove_extension(&mut self) {
-        self.mode = SecondPlayerExtensionMode::None;
+        self.mode = None;
     }
 
     /// Discards previous extension, and establishes a connection to the server.
     /// TODO: encapsulate server communication in a separate module
     pub fn init_online(&mut self) {
-        todo!();
+        self.mode = match net::spawn_connection_threads(self.rerender_board_callback.clone()) {
+            Ok(sender) => OnlinePlayer(sender),
+            _ => None
+        }
     }
 
     /// Discards the previous extension, and replaces it with a new AI.
     pub fn init_ai(&mut self, ai: Box<dyn ai::AI>) {
-        self.mode = SecondPlayerExtensionMode::AI(ai);
+        self.mode = AI(ai);
     }
 
     // Discards the previous extension, and creates a new survival mode.
-    pub fn init_survival(&mut self, starting_ai: Box<dyn ai::AI>) {
-        todo!();
+    pub fn init_survival(&mut self, ai: Box<dyn ai::SurvivalAI>) {
+        self.mode = SurvivalMode(ai)
     }
 
     /// Hands off control to the second player. The board should then wait for
@@ -93,7 +99,7 @@ impl SecondPlayerExtension {
     }
     pub fn is_none(&self) -> bool {
         match &self.mode {
-            None => true,
+            SecondPlayerExtensionMode::None => true,
             _ => false,
         }
     }

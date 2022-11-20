@@ -1,6 +1,6 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
 use crate::{
-    ai::ai::AI as AITrait,
+    ai::ai::{AI as AITrait, SurvivalAI},
     util::{
         second_player_extension::{SecondPlayerExtension, SecondPlayerExtensionMode},
         util::{DiskColor, Disks},
@@ -91,7 +91,7 @@ impl BoardState {
                     let col = ai.get_move(&self.board_state, self.current_player);
                     self.make_move(col).unwrap_or_default();
                 } else {
-                    ai.increment_look_ahead();
+                    ai.increment_difficulty();
                     self.board_state = Disks::default();
                     self.game_history = [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
                     self.num_moves = 0;
@@ -141,7 +141,7 @@ impl BoardState {
     }
 
     // Resets the board, and extends to survival mode (second player is AI that improves each round).
-    pub fn init_survival(&mut self, starting_ai: Box<dyn AITrait>) {
+    pub fn init_survival(&mut self, starting_ai: Box<dyn SurvivalAI>) {
         self.reset(); // reset board data
         self.second_player_extension.init_survival(starting_ai); // set the second player to be an AI
     }
