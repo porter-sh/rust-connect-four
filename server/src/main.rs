@@ -90,6 +90,7 @@ fn handle_connection(
 }
 
 fn main() {
+
     if let Ok(mut listener) = Server::bind(format!("127.0.0.1:{}", PORT)) {
         let mut thread_sender: Option<Sender<WsUpgrade<TcpStream, Option<Buffer>>>> = None;
         while let Ok(incoming) = listener.accept() {
