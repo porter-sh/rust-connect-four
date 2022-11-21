@@ -1,23 +1,21 @@
 use constants::ConnectionProtocol;
 
-use websocket::server::sync::Server;
-use websocket::server::upgrade::WsUpgrade;
-use websocket::sync::server::upgrade::Buffer;
-use websocket::sync::Client;
-use websocket::{Message, OwnedMessage};
-
-// use std::collections::HashMap;
-use std::net::TcpStream;
-use std::thread;
-
-use std::sync::mpsc::{self, Receiver, Sender};
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::mpsc::{self, UnboundedSender, UnboundedReceiver}
+};
+use tokio_tungstenite::{
+    tungstenite::Message::Binary,
+    WebSocketStream
+};
+use futures::{SinkExt, StreamExt};
 
 const PORT: u16 = 8081;
 
-fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStream>) {
+async fn handle_game_loop(mut player1: WebSocketStream<TcpStream>, mut player2: WebSocketStream<TcpStream>) {
     println!("In a new game.");
     loop {
-        if let Ok(OwnedMessage::Binary(msg)) = player1.recv_message() {
+        if let Some(Ok(Binary(msg))) = player1.next().await {
             if msg.len() != 1 {
                 println!("Bad message from player1.");
                 break;
@@ -27,13 +25,14 @@ fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStrea
                 break;
             }
             player2
-                .send_message(&Message::binary(msg))
+                .send(Binary(msg))
+                .await
                 .unwrap_or_default();
         } else {
             println!("No and/or bad message from player1.");
             break;
         }
-        if let Ok(OwnedMessage::Binary(msg)) = player2.recv_message() {
+        if let Some(Ok(Binary(msg))) = player2.next().await {
             if msg.len() != 1 {
                 println!("Bad message from player2.");
                 break;
@@ -43,78 +42,78 @@ fn handle_game_loop(mut player1: Client<TcpStream>, mut player2: Client<TcpStrea
                 break;
             }
             player1
-                .send_message(&Message::binary(msg))
+                .send(Binary(msg))
+                .await
                 .unwrap_or_default();
         } else {
             println!("No and/or bad message from player2.");
             break;
         }
     }
-    player1.shutdown().unwrap_or_default();
-    player2.shutdown().unwrap_or_default();
+    player1.close(None).await.unwrap_or_default();
+    player2.close(None).await.unwrap_or_default();
     println!("Game ended.");
 }
 
-fn handle_connection(
-    incoming: WsUpgrade<TcpStream, Option<Buffer>>,
-    receiver: Receiver<WsUpgrade<TcpStream, Option<Buffer>>>,
+async fn handle_connection(
+    incoming: TcpStream,
+    mut receiver: UnboundedReceiver<TcpStream>,
 ) {
-    if let Ok(mut player1) = incoming.accept() {
-        if let Err(_) = player1.send_message(&Message::binary(&[ConnectionProtocol::IS_PLAYER_1][..])) {
+    println!("Handling connection.");
+    if let Ok(mut player1) = tokio_tungstenite::accept_async(incoming).await {
+        if let Err(_) = player1.send(Binary(vec![ConnectionProtocol::IS_PLAYER_1])).await {
             println!("Early shutdown to client, exiting thread early.");
-            player1.shutdown().unwrap_or_default();
+            player1.close(None).await.unwrap_or_default();
             return;
         }
-        if let Ok(incoming) = receiver.recv() {
-            if let Ok(mut player2) = incoming.accept() {
-                if let Err(_) = player2.send_message(&Message::binary(&[ConnectionProtocol::IS_PLAYER_2][..])) {
+        if let Some(incoming) = receiver.recv().await {
+            if let Ok(mut player2) = tokio_tungstenite::accept_async(incoming).await {
+                if let Err(_) = player2.send(Binary(vec![ConnectionProtocol::IS_PLAYER_2])).await {
                     println!("Early shutdown to client, exiting thread early.");
-                    player1.shutdown().unwrap_or_default();
-                    player2.shutdown().unwrap_or_default();
+                    player1.close(None).await.unwrap_or_default();
+                    player2.close(None).await.unwrap_or_default();
                     return;
                 } else {
-                    handle_game_loop(player1, player2);
+                    handle_game_loop(player1, player2).await;
                 }
             } else {
                 println!("Early shutdown to client, exiting thread early.");
-                player1.shutdown().unwrap_or_default();
+                player1.close(None).await.unwrap_or_default();
                 return;
             }
         } else {
             println!("Early shutdown to client, exiting thread early.");
-            player1.shutdown().unwrap_or_default();
+            player1.close(None).await.unwrap_or_default();
             return;
         }
     }
     println!("Exiting handle_connection thread.");
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
 
-    if let Ok(mut listener) = Server::bind(format!("127.0.0.1:{}", PORT)) {
-        let mut thread_sender: Option<Sender<WsUpgrade<TcpStream, Option<Buffer>>>> = None;
-        while let Ok(incoming) = listener.accept() {
-            match thread_sender {
-                Some(ref sender) => match sender.send(incoming) {
-                    Ok(_) => {
-                        thread_sender = None;
-                    }
-                    Err(send_err) => {
-                        // previous thread ended
-                        let (sender, receiver) = mpsc::channel();
-                        thread::spawn(move || handle_connection(send_err.0, receiver));
-                        thread_sender = Some(sender);
-                    }
-                },
-                _ => {
-                    let (sender, receiver) = mpsc::channel();
-                    thread::spawn(move || handle_connection(incoming, receiver));
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", PORT)).await?;
+    let mut thread_sender: Option<UnboundedSender<TcpStream>> = None;
+
+    loop {
+        let (incoming, _) = listener.accept().await?;
+        match &thread_sender {
+            Some(sender) => match sender.send(incoming) {
+                Ok(_) => thread_sender = None,
+                Err(send_err) => {
+                    // previous thread ended
+                    let (sender, receiver) = mpsc::unbounded_channel();
+                    tokio::spawn(async move { handle_connection(send_err.0, receiver).await; });
                     thread_sender = Some(sender);
                 }
             }
+            _ => {
+                let (sender, receiver) = mpsc::unbounded_channel();
+                tokio::spawn(async move { handle_connection(incoming, receiver).await; });
+                thread_sender = Some(sender);
+            }
         }
-    } else {
-        eprintln!("Failed to bind to port {}.", PORT);
     }
 
     // if let Ok(mut listener) = Server::bind(format!("127.0.0.1:{}", PORT)) {
