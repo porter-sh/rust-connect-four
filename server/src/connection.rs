@@ -12,7 +12,7 @@ use futures::{SinkExt, StreamExt};
 
 use std::sync::{Arc, Mutex};
 
-use crate::lobby::{self, Lobbies};
+use crate::{lobby::lobby, Lobbies};
 
 pub async fn handle_connection(incoming: TcpStream, lobbies: Arc<Mutex<Lobbies>>) -> Result<(), Error> {
 

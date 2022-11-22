@@ -1,13 +1,21 @@
 use constants::WEBSOCKET_ADDRESS;
 
-use tokio::net::TcpListener;
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::mpsc::UnboundedSender
+};
+use tokio_tungstenite::WebSocketStream;
 
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex}
+};
 
 mod connection;
 mod lobby;
 
-use lobby::Lobbies;
+pub type Client = WebSocketStream<TcpStream>;
+pub type Lobbies = HashMap<String, UnboundedSender<Client>>;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
