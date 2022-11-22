@@ -9,6 +9,7 @@ pub struct ConnectionProtocol;
 
 impl ConnectionProtocol {
     pub const KILL_CONNECTION: u8 = 255;
+    pub const CONNECTION_SUCCESS: u8 = 100;
     pub const CONNECTION_FAILED: u8 = 101;
 
     pub const WINNING_MOVE_ADDITION: u8 = 200;

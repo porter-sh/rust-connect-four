@@ -49,12 +49,6 @@ impl Component for Board {
         let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
         let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
 
-        /* TODO: lobby selection for online:
-        if route == Route::OnlineMultiplayer {
-            let query_string = ctx.link().location().expect("no location").search();
-            let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
-        } */
-
         html! {
             <>
                 <div class={ "board-background" }>
@@ -113,7 +107,9 @@ impl Board {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
                 }
                 Route::OnlineMultiplayer => {
-                    board.borrow_mut().init_online();
+                    let query_string = location.search();
+                    let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
+                    board.borrow_mut().init_online(lobby.to_string());
                 }
                 Route::VersusBot => {
                     match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {

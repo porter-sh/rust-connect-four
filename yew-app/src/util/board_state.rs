@@ -129,9 +129,9 @@ impl BoardState {
     }
 
     // Resets the board, and requests a server connection.
-    pub fn init_online(&mut self) {
+    pub fn init_online(&mut self, lobby: String) {
         self.reset(); // reset board data
-        self.second_player_extension.init_online(); // set the second player to be online
+        self.second_player_extension.init_online(lobby); // set the second player to be online
     }
 
     // Resets the board, and extends with an AI as the second player.

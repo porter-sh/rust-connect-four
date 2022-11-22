@@ -47,8 +47,8 @@ impl SecondPlayerExtension {
 
     /// Discards previous extension, and establishes a connection to the server.
     /// TODO: encapsulate server communication in a separate module
-    pub fn init_online(&mut self) {
-        self.mode = match net::spawn_connection_threads(self.rerender_board_callback.clone()) {
+    pub fn init_online(&mut self, lobby: String) {
+        self.mode = match net::spawn_connection_threads(self.rerender_board_callback.clone(), lobby) {
             Ok(sender) => OnlinePlayer(sender),
             _ => None
         }
