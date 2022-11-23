@@ -105,11 +105,11 @@ impl BoardState {
 
             BoardStateMessage(update) => {
                 // if the message is a non-winning move, it will be the client's turn next, so they can move
-                if !update.game_won {
-                    self.can_move = true;
+                if !update.game_won && self.current_player != DiskColor::Empty {
+                    self.can_move = update.is_p1_turn == (self.current_player == DiskColor::P1);
                 }
                 // update the board
-                self.board_state = update.into();
+                self.board_state = Disks::from(update);
             }
 
             SpecialMessage(msg) => {
@@ -118,6 +118,10 @@ impl BoardState {
                     self.current_player = DiskColor::P1;
                 } else if msg == ConnectionProtocol::IS_PLAYER_2 {
                     self.current_player = DiskColor::P2;
+                    self.can_move = false;
+                    log!("Can move is false");
+                } else if msg == ConnectionProtocol::IS_SPECTATOR {
+                    self.current_player = DiskColor::Empty;
                     self.can_move = false;
                 }
             }

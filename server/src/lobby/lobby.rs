@@ -24,14 +24,18 @@ async fn run_lobby(
     remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>
 ) {
 
+    let mut is_p1_turn = true;
     while let Some(msg) = receiver.recv().await {
         match msg {
 
             BoardState(state) => {
-                task::block_in_place(|| {
-                    subtasks.lock().unwrap().last_board_state = state.binary.clone();
-                });
-                game_update_sender.send(state).unwrap_or_default();
+                if is_p1_turn == (state.player_num == 1) {
+                    task::block_in_place(|| {
+                        subtasks.lock().unwrap().last_board_state = state.binary.clone();
+                    });
+                    game_update_sender.send(state).unwrap_or_default();
+                    is_p1_turn = !is_p1_turn;
+                }
             }
             SpecialMessage(_) => {
                 break;

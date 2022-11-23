@@ -12,7 +12,7 @@ use tokio::{
         broadcast::{Sender, Receiver},
         mpsc::{UnboundedSender, UnboundedReceiver}
     },
-    task
+    task::{self, JoinHandle}
 };
 use tokio_tungstenite::tungstenite::Message::{self as WebSocketMessage, Binary};
 use futures::{SinkExt, StreamExt, stream::{SplitSink, SplitStream}};
@@ -34,26 +34,33 @@ pub async fn new_client_handler(
             let (mut player_num, mut client_type) = (0, ConnectionProtocol::IS_SPECTATOR);
 
             let subtasks_len = subtasks.tasks.len();
-            if subtasks_len <= 2 {
+            if subtasks_len < 2 {
                 (player_num, client_type)
                     = if subtasks_len == 0 {
                         (1, ConnectionProtocol::IS_PLAYER_1)
                     } else {
                         (2, ConnectionProtocol::IS_PLAYER_2)
                     };
-                let sender = sender.clone();
-                subtasks.tasks.push(task::spawn(async move {
-                    player_listener(reader, sender, player_num).await;
-                }));
             }
 
             let game_update_receiver = game_update_sender.subscribe();
             let last_board_state = subtasks.last_board_state.clone();
-            subtasks.tasks.push(task::spawn(async move {
+            let client_task = task::spawn(async move {
                 writer.send(Binary(vec![client_type])).await.unwrap_or_default();
                 writer.send(Binary(last_board_state)).await.unwrap_or_default();
                 client_writer(writer, game_update_receiver, player_num).await;
-            }));
+            });
+
+            if subtasks_len < 2 {
+                let sender = sender.clone();
+                subtasks.tasks.push(task::spawn(async move {
+                    player_listener(reader, sender, player_num).await;
+                }));
+            } else {
+                subtasks.tasks.push(task::spawn(async move {
+                    spectator_listener(reader, client_task).await;
+                }));
+            }
         });
 
     }
@@ -83,6 +90,19 @@ async fn player_listener(mut client: SplitStream<Client>, sender: UnboundedSende
 
 }
 
+async fn spectator_listener(mut client: SplitStream<Client>, client_task: JoinHandle<()>) {
+    while let Some(Ok(msg)) = client.next().await {
+        if let Binary(msg) = msg {
+            if msg.len() == 1 && msg[0] == ConnectionProtocol::KILL_CONNECTION {
+                break;
+            }
+        }
+    }
+
+    client_task.abort();
+    println!("Killed spectator task.");
+}
+
 async fn client_writer(
     mut client: SplitSink<Client, WebSocketMessage>,
     mut receiver: Receiver<MessageFromClient>,
@@ -95,4 +115,5 @@ async fn client_writer(
             }
         }
     }
+    println!("Exiting client writer for player {}.", player_num)
 }

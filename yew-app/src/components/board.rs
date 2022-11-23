@@ -15,7 +15,7 @@ use yew_router::{prelude::*, scope_ext::HistoryHandle};
 
 pub enum BoardMessages {
     Rerender,
-    RerenderAndUpdateColumn(ServerMessage),
+    RerenderAndUpdateBoard(ServerMessage),
 }
 
 /// Board component to store state of the board, to render the board, and to accept user input
@@ -36,7 +36,7 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if let BoardMessages::RerenderAndUpdateColumn(msg) = msg {
+        if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
             self.board.borrow_mut().update_state_from_second_player_msg(msg);
         }
         true
@@ -78,7 +78,7 @@ impl Board {
     pub fn new(ctx: &Context<Board>) -> Self {
         let board_origin = Rc::new(RefCell::new(BoardState::new(
             ctx.link()
-                .callback(|msg: ServerMessage| BoardMessages::RerenderAndUpdateColumn(msg)),
+                .callback(|msg: ServerMessage| BoardMessages::RerenderAndUpdateBoard(msg)),
         )));
         Self {
             board: Rc::clone(&board_origin),
