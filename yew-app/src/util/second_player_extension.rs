@@ -3,14 +3,14 @@ use yew::Callback;
 
 use crate::{
     ai::ai,
-    util::net
+    util::net::{self, ServerMessage}
 };
 
 pub enum SecondPlayerExtensionMode {
-    OnlinePlayer(UnboundedSender<u8>), // vs another person over the internet
-    AI(Box<dyn ai::AI>),               // singleplayer vs bot
+    OnlinePlayer(UnboundedSender<ServerMessage>),    // vs another person over the internet
+    AI(Box<dyn ai::AI>),                             // singleplayer vs bot
     SurvivalMode(Box<dyn ai::SurvivalAI>),           // AI mode, but gets progressively harder
-    None,                              // local multiplayer
+    None,                                            // local multiplayer
 }
 
 impl PartialEq for SecondPlayerExtensionMode {
@@ -28,13 +28,13 @@ impl PartialEq for SecondPlayerExtensionMode {
 #[derive(PartialEq)]
 pub struct SecondPlayerExtension {
     mode: SecondPlayerExtensionMode,
-    rerender_board_callback: Callback<u8>,
+    rerender_board_callback: Callback<ServerMessage>,
 }
 
 use SecondPlayerExtensionMode::{None, AI, OnlinePlayer, SurvivalMode};
 
 impl SecondPlayerExtension {
-    pub fn new(rerender_board_callback: Callback<u8>) -> Self {
+    pub fn new(rerender_board_callback: Callback<ServerMessage>) -> Self {
         Self {
             mode: None,
             rerender_board_callback,

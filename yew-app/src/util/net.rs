@@ -1,4 +1,4 @@
-use constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
+use constants::{ConnectionProtocol, GameUpdate, WEBSOCKET_ADDRESS};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
@@ -14,7 +14,15 @@ use yew::Callback;
 
 use gloo::console::{error, log};
 
-pub fn spawn_connection_threads(callback: Callback<u8>, lobby: String) -> Result<UnboundedSender<u8>, JsError> {
+#[derive(Debug)]
+pub enum ServerMessage {
+    BoardState(GameUpdate),
+    SpecialMessage(u8)
+}
+
+use ServerMessage::{BoardState, SpecialMessage};
+
+pub fn spawn_connection_threads(callback: Callback<ServerMessage>, lobby: String) -> Result<UnboundedSender<ServerMessage>, JsError> {
     let websocket = WebSocket::open(WEBSOCKET_ADDRESS)?;
     let (writer, reader) = websocket.split();
     let (sender, receiver) = mpsc::unbounded_channel();
@@ -26,7 +34,7 @@ pub fn spawn_connection_threads(callback: Callback<u8>, lobby: String) -> Result
     Ok(sender)
 }
 
-fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8>, connection_est_sender: Sender<()>) {
+fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<ServerMessage>, connection_est_sender: Sender<()>) {
     spawn_local(async move {
         log!("Entered reader thread.");
         if let Some(Ok(msg)) = reader.next().await {
@@ -39,10 +47,12 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
         while let Some(Ok(msg)) = reader.next().await {
             match msg {
                 Bytes(bytes) => {
-                    if bytes.len() > 0 {
-                        callback.emit(bytes[0]);
+                    if bytes.len() == 1 {
+                        callback.emit(SpecialMessage(bytes[0]));
+                    } else if let Ok(update) = ConnectionProtocol::assemble_message(bytes) {
+                        callback.emit(BoardState(update));
                     } else {
-                        error!("Received 0 bytes from server.");
+                        error!("Received unrecognizable message from server.");
                     }
                 }
                 _ => {
@@ -56,7 +66,7 @@ fn spawn_reader_thread(mut reader: SplitStream<WebSocket>, callback: Callback<u8
 
 fn spawn_writer_thread(
     mut writer: SplitSink<WebSocket, Message>,
-    mut receiver: UnboundedReceiver<u8>,
+    mut receiver: UnboundedReceiver<ServerMessage>,
     connection_est_receiver: Receiver<()>,
     lobby: String
 ) {
@@ -69,8 +79,13 @@ fn spawn_writer_thread(
             return;
         }
         while let Some(msg) = receiver.recv().await {
-            log!(format!("Sent {}", msg));
-            writer.send(Bytes(vec![msg])).await.unwrap();
+            log!(format!("Sent {:?}", msg));
+            writer.send(Bytes(match msg {
+                BoardState(update) => {
+                    ConnectionProtocol::disassemble_message(update)
+                }
+                SpecialMessage(msg) => vec![msg]
+            })).await.unwrap();
         }
         writer
             .send(Bytes(vec![ConnectionProtocol::KILL_CONNECTION]))

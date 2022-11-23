@@ -22,6 +22,12 @@ impl Default for Disks {
     }
 }
 
+impl From<GameUpdate> for Disks {
+    fn from(game: GameUpdate) -> Self {
+        Self {position: game.position, mask: game.mask, is_p1_turn: game.is_p1_turn}
+    }
+}
+
 /// Manages the data about the disks. Manages everything through an interface
 /// for calculation of who won, which columns are full, empty, how many disks
 /// there are etc. This way it is easy for us to make optimizations later without
@@ -131,6 +137,10 @@ impl Disks {
     /// used for the position lookup table.
     pub fn get_key(&self) -> u64 {
         self.mask + self.position
+    }
+
+    pub fn to_game_update(&self, game_won: bool) -> GameUpdate {
+        GameUpdate { position: self.position, mask: self.mask, is_p1_turn: self.is_p1_turn, game_won }
     }
 
     ///// PRIVATE METHODS /////

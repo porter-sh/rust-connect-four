@@ -3,11 +3,9 @@ use super::{
     client_handler,
     util::{
         Message::{self, BoardState, SpecialMessage},
-        Subtasks
+        Subtasks, MessageFromClient
     }
 };
-
-use constants::ConnectionProtocol;
 
 use tokio::{
     sync::{
@@ -21,7 +19,7 @@ use std::sync::{Arc, Mutex};
 
 async fn run_lobby(
     mut receiver: UnboundedReceiver<Message>,
-    game_update_sender: Sender<Vec<u8>>,
+    game_update_sender: Sender<MessageFromClient>,
     subtasks: Arc<Mutex<Subtasks>>,
     remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>
 ) {
@@ -30,8 +28,10 @@ async fn run_lobby(
         match msg {
 
             BoardState(state) => {
-                { subtasks.lock().unwrap().last_board_state = state; }
-                game_update_sender.send(ConnectionProtocol::disassemble_message(state)).unwrap_or_default();
+                task::block_in_place(|| {
+                    subtasks.lock().unwrap().last_board_state = state.binary.clone();
+                });
+                game_update_sender.send(state).unwrap_or_default();
             }
             SpecialMessage(_) => {
                 break;

@@ -1,6 +1,7 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
 use crate::{
     ai::ai::{AI as AITrait, SurvivalAI},
+    util::net::ServerMessage::{self, BoardState as BoardStateMessage, SpecialMessage},
     util::{
         second_player_extension::{SecondPlayerExtension, SecondPlayerExtensionMode},
         util::{DiskColor, Disks},
@@ -30,7 +31,7 @@ pub struct BoardState {
 /// Implements functions to check if the game has been won
 impl BoardState {
     /// Creates a new empty board, with a callback for rerendering the board.
-    pub fn new(rerender_board_callback: Callback<u8>) -> Self {
+    pub fn new(rerender_board_callback: Callback<ServerMessage>) -> Self {
         BoardState {
             board_state: Disks::default(),
             can_move: true,
@@ -62,16 +63,12 @@ impl BoardState {
 
     /// If playing online, send a message to the server containing the move, and whether
     /// the game was won.
-    pub fn update_server_if_online(&mut self, selected_col: u8) {
+    pub fn update_server_if_online(&mut self) {
         if self.second_player_extension.is_online_player() {
-            let mut col_num_addition = 0;
-            if !self.can_move {
-                col_num_addition = ConnectionProtocol::WINNING_MOVE_ADDITION;
-            } else {
-                self.can_move = false;
-            }
+            let update = self.board_state.to_game_update(!self.can_move);
+            self.can_move = false;
             if let OnlinePlayer(sender) = self.second_player_extension.get_mode() {
-                if let Err(e) = sender.send(selected_col as u8 + col_num_addition) {
+                if let Err(e) = sender.send(BoardStateMessage(update)) {
                     error!(format!("Failed to send message: {}", e));
                 }
             }
@@ -102,30 +99,30 @@ impl BoardState {
     }
 
     /// Handles all the board changes based on a message from the second player.
-    pub fn update_state_from_second_player_msg(&mut self, mut message: u8) {
-        // initialization, telling the client which player they are
-        if message == ConnectionProtocol::IS_PLAYER_1 {
-            self.current_player = DiskColor::P1;
-        } else if message == ConnectionProtocol::IS_PLAYER_2 {
-            self.current_player = DiskColor::P2;
-            self.can_move = false;
-        }
-        // if the message communicates a win, extract which column was the winning play
-        else if ConnectionProtocol::COL_0 + ConnectionProtocol::WINNING_MOVE_ADDITION <= message
-            && message <= ConnectionProtocol::COL_6 + ConnectionProtocol::WINNING_MOVE_ADDITION
-        {
-            message -= ConnectionProtocol::WINNING_MOVE_ADDITION;
-        }
-        // if the message is a non-winning move, it will be the client's turn next, so they can move
-        else {
-            self.can_move = true;
-        }
+    pub fn update_state_from_second_player_msg(&mut self, msg: ServerMessage) {
+        log!(format!("Received {:?}", msg));
+        match msg {
 
-        // if the message is a valid column, make the move
-        if ConnectionProtocol::COL_0 <= message && message <= ConnectionProtocol::COL_6 {
-            self.board_state.drop_disk(message).unwrap(); // TODO: Handle error
+            BoardStateMessage(update) => {
+                // if the message is a non-winning move, it will be the client's turn next, so they can move
+                if !update.game_won {
+                    self.can_move = true;
+                }
+                // update the board
+                self.board_state = update.into();
+            }
+
+            SpecialMessage(msg) => {
+                // initialization, telling the client which player they are
+                if msg == ConnectionProtocol::IS_PLAYER_1 {
+                    self.current_player = DiskColor::P1;
+                } else if msg == ConnectionProtocol::IS_PLAYER_2 {
+                    self.current_player = DiskColor::P2;
+                    self.can_move = false;
+                }
+            }
+
         }
-        log!(format!("Received {}", message));
     }
 
     // Resets the board, and requests a server connection.

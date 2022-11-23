@@ -6,7 +6,7 @@ use crate::{
     ai::{perfect::PerfectAI, random::RandomAI},
     components::{column::*, game_control_buttons::GameControlButtons},
     router::{AIRoute, Route},
-    util::board_state::BoardState,
+    util::{board_state::BoardState, net::ServerMessage},
 };
 use constants::*;
 use std::{cell::RefCell, rc::Rc};
@@ -15,7 +15,7 @@ use yew_router::{prelude::*, scope_ext::HistoryHandle};
 
 pub enum BoardMessages {
     Rerender,
-    RerenderAndUpdateColumn(u8),
+    RerenderAndUpdateColumn(ServerMessage),
 }
 
 /// Board component to store state of the board, to render the board, and to accept user input
@@ -36,8 +36,8 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if let BoardMessages::RerenderAndUpdateColumn(msg_val) = msg {
-            self.board.borrow_mut().update_state_from_second_player_msg(msg_val);
+        if let BoardMessages::RerenderAndUpdateColumn(msg) = msg {
+            self.board.borrow_mut().update_state_from_second_player_msg(msg);
         }
         true
     }
@@ -78,7 +78,7 @@ impl Board {
     pub fn new(ctx: &Context<Board>) -> Self {
         let board_origin = Rc::new(RefCell::new(BoardState::new(
             ctx.link()
-                .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num)),
+                .callback(|msg: ServerMessage| BoardMessages::RerenderAndUpdateColumn(msg)),
         )));
         Self {
             board: Rc::clone(&board_origin),

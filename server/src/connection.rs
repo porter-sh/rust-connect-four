@@ -49,7 +49,7 @@ pub async fn handle_connection(incoming: TcpStream, lobbies: Arc<Mutex<Lobbies>>
         });
     }
 
-    println!("Exiting now");
+    println!("Connection handled.");
     Ok(())
 
 }
