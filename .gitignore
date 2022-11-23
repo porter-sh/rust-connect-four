@@ -1,3 +1,5 @@
 */target/*
 yew-app/dist/*
+server/cpplib/*
+server/src/bindings.rs
 Cargo.lock

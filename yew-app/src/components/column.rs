@@ -44,27 +44,13 @@ impl Component for Column {
             onclick: {
                 let board = Rc::clone(&ctx.props().disks);
                 let col_num = ctx.props().col_num as u8;
-                let rerender_board_callback = ctx.props().rerender_board_callback.clone();
+                // let rerender_board_callback = ctx.props().rerender_board_callback.clone();
                 ctx.link().callback(move |_| {
-                    if !board.borrow_mut().board_state.is_col_full(col_num) {
-                        let mut rerender_early = false;
-                        {
-                            let mut disks = board.borrow_mut();
-                            disks.make_move(col_num).unwrap();
-                            disks.update_server_if_online(col_num);
-                            if disks.second_player_extension.is_ai()
-                                || disks.second_player_extension.is_survival_mode()
-                            {
-                                rerender_early = true;
-                            }
-                        }
-                        if rerender_early {
-                            let can_move = board.borrow_mut().can_move;
-                            board.borrow_mut().can_move = false;
-                            rerender_board_callback.emit(());
-                            board.borrow_mut().can_move = can_move;
-                        }
-                        board.borrow_mut().run_ai_if_applicable();
+                    let mut disks = board.borrow_mut();
+                    if !disks.board_state.is_col_full(col_num) {
+                        disks.make_move(col_num).unwrap();
+                        disks.update_server_if_online();
+                        disks.run_ai_if_applicable();
 
                         return ColumnMessages::Rerender;
                     }
