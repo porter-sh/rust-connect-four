@@ -3,11 +3,12 @@
 //! new_client_handler spawns threads to read and write data over websockets to clients and to communicate with the main lobby task
 
 use crate::Client;
-use super::util::{
-    Message::{self, BoardState, SpecialMessage},
-    Subtasks,
-    MessageFromClient
-};
+use super::util::{MessageFromClient, Subtasks};
+
+#[cfg(feature = "cppintegration")]
+type Message = MessageFromClient;
+#[cfg(not(feature = "cppintegration"))]
+use super::util::Message::{self, BoardState, SpecialMessage};
 
 use constants::ConnectionProtocol;
 
@@ -94,6 +95,14 @@ async fn player_listener(mut client: SplitStream<Client>, sender: UnboundedSende
         if let Binary(binary) = msg {
 
             // Forward the message to the main lobby task
+            #[cfg(feature = "cppintegration")]
+            if binary.len() == 1 {
+                
+                sender.send(MessageFromClient {binary, player_num}).unwrap();
+
+            } else { println!("Player sent unrecognized message."); break; }
+
+            #[cfg(not(feature = "cppintegration"))]
             if binary.len() == 1 {
                 
                 sender.send(SpecialMessage(binary[0])).unwrap();
@@ -108,6 +117,12 @@ async fn player_listener(mut client: SplitStream<Client>, sender: UnboundedSende
     }
 
     // Tell the main lobby task to kill the lobby: the player left so the game is now over
+    #[cfg(feature = "cppintegration")]
+    sender.send(MessageFromClient {
+        binary: vec![ConnectionProtocol::KILL_CONNECTION],
+        player_num
+    }).unwrap();
+    #[cfg(not(feature = "cppintegration"))]
     sender.send(SpecialMessage(ConnectionProtocol::KILL_CONNECTION)).unwrap();
     println!("Ending player listener.");
 

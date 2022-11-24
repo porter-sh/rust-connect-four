@@ -17,6 +17,9 @@ use std::{
 mod connection;
 mod lobby;
 
+#[cfg(feature = "cppintegration")]
+mod bindings;
+
 pub type Client = WebSocketStream<TcpStream>;
 pub type Lobbies = HashMap<String, UnboundedSender<Client>>;
 
@@ -24,6 +27,16 @@ pub type Lobbies = HashMap<String, UnboundedSender<Client>>;
 /// Uses a multithreaded asynchronous runtime
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+
+    #[cfg(feature = "cppintegration")]
+    {
+        println!("CPP integration enabled.");
+    }
+
+    #[cfg(not(feature = "cppintegration"))]
+    {
+        println!("CPP integration disabled.");
+    }
 
     let listener = TcpListener::bind(&WEBSOCKET_ADDRESS[5..]).await?;
     // "Global" storage of the lobbies in existence

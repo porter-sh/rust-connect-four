@@ -19,6 +19,7 @@ impl Default for Subtasks {
 }
 
 /// Message from the client, usually to be sent to other clients
+#[cfg(not(feature = "cppintegration"))]
 #[derive(Debug)]
 pub enum Message {
     BoardState(MessageFromClient),

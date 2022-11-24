@@ -29,6 +29,9 @@ pub async fn handle_connection(incoming: TcpStream, lobbies: Arc<Mutex<Lobbies>>
 
     // Confirm (besides the websocket handshake) the connection was successful
     // Length of the confirmation message indicated what type of message the client should send to the server
+    #[cfg(feature = "cppintegration")]
+    client.send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS])).await?;
+    #[cfg(not(feature = "cppintegration"))]
     client.send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS, 0])).await?;
 
     // Get the lobby name from the client and place the client into the desired lobby

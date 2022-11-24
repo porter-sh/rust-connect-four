@@ -1,13 +1,25 @@
 //! lobby contains create_lobby, which allows players to create and join lobbies
 
+#[cfg(feature = "cppintegration")]
+use constants::ConnectionProtocol;
+
 use crate::Client;
+#[cfg(feature = "cppintegration")]
+use crate::bindings::Board;
+#[cfg(feature = "cppintegration")]
+use std::os::raw::c_int;
 use super::{
     client_handler,
     util::{
-        Message::{self, BoardState, SpecialMessage},
-        Subtasks, MessageFromClient
+        MessageFromClient,
+        Subtasks
     }
 };
+
+#[cfg(feature = "cppintegration")]
+type Message = MessageFromClient;
+#[cfg(not(feature = "cppintegration"))]
+use super::util::Message::{self, BoardState, SpecialMessage};
 
 use tokio::{
     sync::{
@@ -29,9 +41,33 @@ async fn run_lobby(
     remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>
 ) {
 
+    #[cfg(feature = "cppintegration")]
+    let mut board = Board::default();
+
     // Is player1's turn at the start of the game
     let mut is_p1_turn = true;
     // When player input is received
+    #[cfg(feature = "cppintegration")]
+    while let Some(mut msg) = receiver.recv().await {
+        {
+            let msg_byte = msg.binary[0];
+            if msg_byte == ConnectionProtocol::KILL_CONNECTION {
+                break;
+            }
+            if is_p1_turn == (msg.player_num == 1) {
+                if let Ok(game_won) = board.make_move(msg.player_num, msg_byte as c_int) {
+                    is_p1_turn = !is_p1_turn;
+                    msg.binary = board.to_game_update_binary(is_p1_turn, game_won);
+                    task::block_in_place(|| {
+                        subtasks.lock().unwrap().last_board_state = msg.binary.clone();
+                    });
+                    game_update_sender.send(msg).unwrap_or_default();
+                }
+            }
+        }
+    }
+
+    #[cfg(not(feature = "cppintegration"))]
     while let Some(msg) = receiver.recv().await {
         match msg {
 
@@ -41,8 +77,8 @@ async fn run_lobby(
                     task::block_in_place(|| {
                         subtasks.lock().unwrap().last_board_state = state.binary.clone();
                     });
-                    game_update_sender.send(state).unwrap_or_default();
                     is_p1_turn = !is_p1_turn;
+                    game_update_sender.send(state).unwrap_or_default();
                 }
             }
             // Special messages at this stage means a player killed the connection
