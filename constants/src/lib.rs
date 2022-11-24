@@ -5,8 +5,10 @@ pub const BOARD_WIDTH: u8 = 7; // number of columns in the board
 pub const WEBSOCKET_ADDRESS: &str = "ws://127.0.0.1:8081";
 pub const LOOKUP_TABLE_SIZE: usize = 1000; // 1000 should be slightly more than 64 MB
 
+/// Helper enum like struct to provide some communication standards between the client and server
 pub struct ConnectionProtocol;
 
+/// Helper struct to represent a game update to be sent between the client and server
 #[derive(Debug, Clone)]
 pub struct GameUpdate {
     pub position: u64,
@@ -20,6 +22,8 @@ impl ConnectionProtocol {
     pub const CONNECTION_SUCCESS: u8 = 100;
     pub const CONNECTION_FAILED: u8 = 101;
 
+    pub const WINNING_MOVE_ADDITION: u8 = 200;
+
     pub const IS_PLAYER_1: u8 = 254;
     pub const IS_PLAYER_2: u8 = 253;
     pub const IS_SPECTATOR: u8 = 252;
@@ -32,11 +36,14 @@ impl ConnectionProtocol {
     pub const COL_5: u8 = 5;
     pub const COL_6: u8 = 6;
 
+    /// Number of bytes in a message representing a GameUpdate to be sent over a websocket
     pub const MESSAGE_SIZE: usize = 14;
     
     const IS_NOT_P1_TURN: u64 = 1 << (2 * BOARD_HEIGHT + 1);
     const GAME_WON: u64 = 1 << (3 * BOARD_HEIGHT + 2);
 
+    /// Turns a vector of bytes, sent over a websocket, into an easily usable GameUpdate object
+    /// Fails if bytes.len() != ConnectionProtocol::MESSAGE_SIZE
     pub fn assemble_message(bytes: Vec<u8>) -> Result<GameUpdate, ()> {
         if bytes.len() != Self::MESSAGE_SIZE { return Err(()); }
 
@@ -63,6 +70,8 @@ impl ConnectionProtocol {
         Ok(GameUpdate {position, mask, is_p1_turn, game_won})
     }
 
+    /// Turns a GameUpdate into a vector of bytes, which can be sent over a websocket
+    /// The returned Vec has a length of ConnectionProtocol::MESSAGE_SIZE
     pub fn disassemble_message(mut msg: GameUpdate) -> Vec<u8> {
         const MAX_U8: u64 = std::u8::MAX as u64;
 

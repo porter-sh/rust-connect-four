@@ -63,14 +63,18 @@ impl BoardState {
 
     /// If playing online, send a message to the server containing the move, and whether
     /// the game was won.
-    pub fn update_server_if_online(&mut self) {
-        if self.second_player_extension.is_online_player() {
-            let update = self.board_state.to_game_update(!self.can_move);
+    pub fn update_server_if_online(&mut self, selected_col: u8) {
+        if let OnlinePlayer {sender, send_update_as_col_num}
+            = self.second_player_extension.get_mode()
+        {
+            let update = if *send_update_as_col_num.borrow() {
+                SpecialMessage(selected_col)
+            } else {
+                BoardStateMessage(self.board_state.to_game_update(!self.can_move))
+            };
             self.can_move = false;
-            if let OnlinePlayer(sender) = self.second_player_extension.get_mode() {
-                if let Err(e) = sender.send(BoardStateMessage(update)) {
-                    error!(format!("Failed to send message: {}", e));
-                }
+            if let Err(e) = sender.send(update) {
+                error!(format!("Failed to send message: {}", e));
             }
         }
     }

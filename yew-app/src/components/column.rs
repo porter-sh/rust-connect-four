@@ -49,7 +49,7 @@ impl Component for Column {
                     let mut disks = board.borrow_mut();
                     if !disks.board_state.is_col_full(col_num) {
                         disks.make_move(col_num).unwrap();
-                        disks.update_server_if_online();
+                        disks.update_server_if_online(col_num);
                         disks.run_ai_if_applicable();
 
                         return ColumnMessages::Rerender;

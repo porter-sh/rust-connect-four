@@ -6,8 +6,13 @@ use crate::{
     util::net::{self, ServerMessage}
 };
 
+use std::{cell::RefCell, rc::Rc};
+
 pub enum SecondPlayerExtensionMode {
-    OnlinePlayer(UnboundedSender<ServerMessage>),    // vs another person over the internet
+    OnlinePlayer {
+        sender: UnboundedSender<ServerMessage>,
+        send_update_as_col_num: Rc<RefCell<bool>>
+    },    // vs another person over the internet
     AI(Box<dyn ai::AI>),                             // singleplayer vs bot
     SurvivalMode(Box<dyn ai::SurvivalAI>),           // AI mode, but gets progressively harder
     None,                                            // local multiplayer
@@ -16,7 +21,7 @@ pub enum SecondPlayerExtensionMode {
 impl PartialEq for SecondPlayerExtensionMode {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::OnlinePlayer(_), Self::OnlinePlayer(_)) => true,
+            (Self::OnlinePlayer {..}, Self::OnlinePlayer {..}) => true,
             (Self::AI(_), Self::AI(_)) => true,
             (Self::SurvivalMode(_), Self::SurvivalMode(_)) => true,
             (Self::None, Self::None) => true,
@@ -48,8 +53,8 @@ impl SecondPlayerExtension {
     /// Discards previous extension, and establishes a connection to the server.
     /// TODO: encapsulate server communication in a separate module
     pub fn init_online(&mut self, lobby: String) {
-        self.mode = match net::spawn_connection_threads(self.rerender_board_callback.clone(), lobby) {
-            Ok(sender) => OnlinePlayer(sender),
+        self.mode = match net::spawn_connection_tasks(self.rerender_board_callback.clone(), lobby) {
+            Ok((sender, send_update_as_col_num)) => OnlinePlayer { sender, send_update_as_col_num },
             _ => None
         }
     }
@@ -81,7 +86,7 @@ impl SecondPlayerExtension {
 
     pub fn is_online_player(&self) -> bool {
         match &self.mode {
-            OnlinePlayer(_) => true,
+            OnlinePlayer {..} => true,
             _ => false,
         }
     }
