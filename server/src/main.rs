@@ -29,14 +29,9 @@ pub type Lobbies = HashMap<String, UnboundedSender<Client>>;
 async fn main() -> std::io::Result<()> {
 
     #[cfg(feature = "cppintegration")]
-    {
-        println!("CPP integration enabled.");
-    }
-
+    println!("C++ integration enabled.");
     #[cfg(not(feature = "cppintegration"))]
-    {
-        println!("CPP integration disabled.");
-    }
+    println!("C++ integration disabled.");
 
     let listener = TcpListener::bind(&WEBSOCKET_ADDRESS[5..]).await?;
     // "Global" storage of the lobbies in existence

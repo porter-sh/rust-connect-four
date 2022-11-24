@@ -6,8 +6,7 @@ use constants::ConnectionProtocol;
 use crate::Client;
 #[cfg(feature = "cppintegration")]
 use crate::bindings::Board;
-#[cfg(feature = "cppintegration")]
-use std::os::raw::c_int;
+
 use super::{
     client_handler,
     util::{
@@ -55,7 +54,7 @@ async fn run_lobby(
                 break;
             }
             if is_p1_turn == (msg.player_num == 1) {
-                if let Ok(game_won) = board.make_move(msg.player_num, msg_byte as c_int) {
+                if let Ok(game_won) = board.make_move(msg.player_num, msg_byte) {
                     is_p1_turn = !is_p1_turn;
                     msg.binary = board.to_game_update_binary(is_p1_turn, game_won);
                     task::block_in_place(|| {
