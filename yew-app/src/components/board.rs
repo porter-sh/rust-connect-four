@@ -37,7 +37,7 @@ impl Component for Board {
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
-            self.board.borrow_mut().update_state_from_second_player_msg(msg);
+            self.board.borrow_mut().update_state_from_second_player_message(msg);
         }
         true
     }

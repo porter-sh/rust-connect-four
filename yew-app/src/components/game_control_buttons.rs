@@ -3,6 +3,9 @@
 //! for user input outside of the game, like "Quit Game" and "Undo".
 //! All of the buttons are created in this file, to make it easy to have
 //! them all within the same <div> element.
+
+use constants::ConnectionProtocol;
+
 use crate::{
     router::Route,
     util::{board_state::BoardState, util::DiskColor},
@@ -39,21 +42,23 @@ impl Component for GameControlButtons {
                         return;
                     } // At the start of the game
 
+                    if !disks.second_player_extension.is_online_player() { // Revert to previous player
+                        disks.current_player = if disks.current_player == DiskColor::P1 {
+                            DiskColor::P2
+                        } else {
+                            DiskColor::P1
+                        };
+                    }
+
                     disks.can_move = true; // Undoes win, allowing board interaction
-
-                    // Revert to previous player
-                    disks.current_player = if disks.current_player == DiskColor::P1 {
-                        DiskColor::P2
-                    } else {
-                        DiskColor::P1
-                    };
-
                     disks.num_moves -= 1;
 
                     let num_moves = disks.num_moves;
 
                     let col = disks.game_history[num_moves as usize]; // Get the column the last move was made in
                     disks.board_state.rm_disk_from_col(col); // Remove the disk from the columns
+
+                    disks.update_server_if_online(ConnectionProtocol::UNDO);
                 } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
 
                 // Tell the Board to rerender
@@ -82,7 +87,21 @@ impl Component for GameControlButtons {
                                 <button class="control-btn" onclick={self.undo_callback.clone()}>
                                     { "Undo" }
                                 </button> },
-                                _ => html! {},
+                            Route::OnlineMultiplayer => {
+                                let disks = ctx.props().board.borrow();
+                                if !disks.can_move
+                                    && disks.second_player_extension.undo_enabled_for_online()
+                                {
+                                    html! {
+                                        <button class="control-btn" onclick={self.undo_callback.clone()}>
+                                            { "Undo" }
+                                        </button>
+                                    }
+                                } else {
+                                    html! {}
+                                }
+                            }
+                            _ => html! {},
                         }}
                     </div>
                 }

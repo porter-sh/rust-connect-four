@@ -12,7 +12,7 @@ pub enum SecondPlayerExtensionMode {
     OnlinePlayer {
         sender: UnboundedSender<ServerMessage>,
         send_update_as_col_num: Rc<RefCell<bool>>
-    },    // vs another person over the internet
+    },                                               // vs another person over the internet
     AI(Box<dyn ai::AI>),                             // singleplayer vs bot
     SurvivalMode(Box<dyn ai::SurvivalAI>),           // AI mode, but gets progressively harder
     None,                                            // local multiplayer
@@ -82,6 +82,14 @@ impl SecondPlayerExtension {
 
     pub fn get_mode_mut(&mut self) -> &mut SecondPlayerExtensionMode {
         &mut self.mode
+    }
+
+    pub fn undo_enabled_for_online(&self) -> bool {
+        if let OnlinePlayer {send_update_as_col_num: no_undo, ..} = &self.mode {
+            !*no_undo.borrow()
+        } else {
+            false
+        }
     }
 
     pub fn is_online_player(&self) -> bool {

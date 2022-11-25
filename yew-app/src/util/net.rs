@@ -20,19 +20,21 @@ use std::{cell::RefCell, rc::Rc};
 #[derive(Debug)]
 pub enum ServerMessage {
     BoardState(GameUpdate),
-    SpecialMessage(u8)
+    SpecialMessage(u8),
+    UndoMove(GameUpdate)
 }
 
 impl From<ServerMessage> for Message {
     fn from(msg: ServerMessage) -> Message {
         Bytes(match msg {
             BoardState(update) => ConnectionProtocol::disassemble_message(update),
-            SpecialMessage(msg) => vec![msg]
+            SpecialMessage(msg) => vec![msg],
+            UndoMove(update) => ConnectionProtocol::disassemble_undo_message(update)
         })
     }
 }
 
-use ServerMessage::{BoardState, SpecialMessage};
+use ServerMessage::{BoardState, SpecialMessage, UndoMove};
 
 /// Spawns reader and writer tasks to communicate with the server
 /// On success, returns:

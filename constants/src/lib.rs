@@ -20,9 +20,6 @@ pub struct GameUpdate {
 impl ConnectionProtocol {
     pub const KILL_CONNECTION: u8 = 255;
     pub const CONNECTION_SUCCESS: u8 = 100;
-    pub const CONNECTION_FAILED: u8 = 101;
-
-    pub const WINNING_MOVE_ADDITION: u8 = 200;
 
     pub const IS_PLAYER_1: u8 = 254;
     pub const IS_PLAYER_2: u8 = 253;
@@ -36,11 +33,15 @@ impl ConnectionProtocol {
     pub const COL_5: u8 = 5;
     pub const COL_6: u8 = 6;
 
+    pub const UNDO: u8 = 7;
+
     /// Number of bytes in a message representing a GameUpdate to be sent over a websocket
     pub const MESSAGE_SIZE: usize = 14;
     
     const IS_NOT_P1_TURN: u64 = 1 << (2 * BOARD_HEIGHT + 1);
     const GAME_WON: u64 = 1 << (3 * BOARD_HEIGHT + 2);
+    const UNDO_MOVE_OFFSET: u64 = 4 * BOARD_HEIGHT as u64 + 3;
+    const UNDO_MOVE: u64 = 1 << Self::UNDO_MOVE_OFFSET;
 
     /// Turns a vector of bytes, sent over a websocket, into an easily usable GameUpdate object
     /// Fails if bytes.len() != ConnectionProtocol::MESSAGE_SIZE
@@ -66,6 +67,8 @@ impl ConnectionProtocol {
         if game_won {
             mask &= !Self::GAME_WON;
         }
+
+        mask &= !Self::UNDO_MOVE;
 
         Ok(GameUpdate {position, mask, is_p1_turn, game_won})
     }
@@ -93,5 +96,14 @@ impl ConnectionProtocol {
         }
 
         bytes
+    }
+
+    pub fn disassemble_undo_message(mut msg: GameUpdate) -> Vec<u8> {
+        msg.mask |= Self::UNDO_MOVE;
+        Self::disassemble_message(msg)
+    }
+
+    pub fn is_undo_move(bytes: &Vec<u8>) -> bool {
+        bytes[(Self::MESSAGE_SIZE / 2 + Self::UNDO_MOVE_OFFSET as usize / 8)] & (1 << Self::UNDO_MOVE_OFFSET % 8) != 0
     }
 }

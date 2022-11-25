@@ -1,7 +1,7 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
 use crate::{
     ai::ai::{AI as AITrait, SurvivalAI},
-    util::net::ServerMessage::{self, BoardState as BoardStateMessage, SpecialMessage},
+    util::net::ServerMessage::{self, BoardState as BoardStateMessage, SpecialMessage, UndoMove},
     util::{
         second_player_extension::{SecondPlayerExtension, SecondPlayerExtensionMode},
         util::{DiskColor, Disks},
@@ -70,9 +70,15 @@ impl BoardState {
             let update = if *send_update_as_col_num.borrow() {
                 SpecialMessage(selected_col)
             } else {
-                BoardStateMessage(self.board_state.to_game_update(!self.can_move))
+                if selected_col == ConnectionProtocol::UNDO {
+                    UndoMove(self.board_state.to_game_update(!self.can_move))
+                } else {
+                    BoardStateMessage(self.board_state.to_game_update(!self.can_move))
+                }
             };
-            self.can_move = false;
+            if selected_col != ConnectionProtocol::UNDO {
+                self.can_move = false;
+            }
             if let Err(e) = sender.send(update) {
                 error!(format!("Failed to send message: {}", e));
             }
@@ -103,11 +109,11 @@ impl BoardState {
     }
 
     /// Handles all the board changes based on a message from the second player.
-    pub fn update_state_from_second_player_msg(&mut self, msg: ServerMessage) {
+    pub fn update_state_from_second_player_message(&mut self, msg: ServerMessage) {
         log!(format!("Received {:?}", msg));
         match msg {
 
-            BoardStateMessage(update) => {
+            BoardStateMessage(update) | UndoMove(update) => {
                 // if the message is a non-winning move, it will be the client's turn next, so they can move
                 if !update.game_won && self.current_player != DiskColor::Empty {
                     self.can_move = update.is_p1_turn == (self.current_player == DiskColor::P1);
@@ -123,7 +129,6 @@ impl BoardState {
                 } else if msg == ConnectionProtocol::IS_PLAYER_2 {
                     self.current_player = DiskColor::P2;
                     self.can_move = false;
-                    log!("Can move is false");
                 } else if msg == ConnectionProtocol::IS_SPECTATOR {
                     self.current_player = DiskColor::Empty;
                     self.can_move = false;

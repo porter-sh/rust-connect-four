@@ -1,6 +1,5 @@
 //! lobby contains create_lobby, which allows players to create and join lobbies
 
-#[cfg(feature = "cppintegration")]
 use constants::ConnectionProtocol;
 
 use crate::Client;
@@ -48,20 +47,18 @@ async fn run_lobby(
     // When player input is received
     #[cfg(feature = "cppintegration")]
     while let Some(mut msg) = receiver.recv().await {
-        {
-            let msg_byte = msg.binary[0];
-            if msg_byte == ConnectionProtocol::KILL_CONNECTION {
-                break;
-            }
-            if is_p1_turn == (msg.player_num == 1) {
-                if let Ok(game_won) = board.make_move(msg.player_num, msg_byte) {
-                    is_p1_turn = !is_p1_turn;
-                    msg.binary = board.to_game_update_binary(is_p1_turn, game_won);
-                    task::block_in_place(|| {
-                        subtasks.lock().unwrap().last_board_state = msg.binary.clone();
-                    });
-                    game_update_sender.send(msg).unwrap_or_default();
-                }
+        let msg_byte = msg.binary[0];
+        if msg_byte == ConnectionProtocol::KILL_CONNECTION {
+            break;
+        }
+        if is_p1_turn == (msg.player_num == 1) {
+            if let Ok(game_won) = board.make_move(msg.player_num, msg_byte) {
+                is_p1_turn = !is_p1_turn;
+                msg.binary = board.to_game_update_binary(is_p1_turn, game_won);
+                task::block_in_place(|| {
+                    subtasks.lock().unwrap().last_board_state = msg.binary.clone();
+                });
+                game_update_sender.send(msg).unwrap_or_default();
             }
         }
     }
@@ -72,7 +69,8 @@ async fn run_lobby(
 
             // If a message was received from the player whose turn it was, store the updated game state and send it to all clients
             BoardState(state) => {
-                if is_p1_turn == (state.player_num == 1) {
+                let expected_to_be_p1 = if ConnectionProtocol::is_undo_move(&state.binary) { !is_p1_turn } else { is_p1_turn };
+                if expected_to_be_p1 == (state.player_num == 1) {
                     task::block_in_place(|| {
                         subtasks.lock().unwrap().last_board_state = state.binary.clone();
                     });
