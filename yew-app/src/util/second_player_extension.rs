@@ -3,7 +3,7 @@ use yew::Callback;
 
 use crate::{
     ai::ai,
-    util::net::{self, ServerMessage}
+    util::net::{self, ServerMessage},
 };
 
 use std::{cell::RefCell, rc::Rc};
@@ -11,17 +11,17 @@ use std::{cell::RefCell, rc::Rc};
 pub enum SecondPlayerExtensionMode {
     OnlinePlayer {
         sender: UnboundedSender<ServerMessage>,
-        send_update_as_col_num: Rc<RefCell<bool>>
-    },                                               // vs another person over the internet
-    AI(Box<dyn ai::AI>),                             // singleplayer vs bot
-    SurvivalMode(Box<dyn ai::SurvivalAI>),           // AI mode, but gets progressively harder
-    None,                                            // local multiplayer
+        send_update_as_col_num: Rc<RefCell<bool>>,
+    }, // vs another person over the internet
+    AI(Box<dyn ai::AI>),                   // singleplayer vs bot
+    SurvivalMode(Box<dyn ai::SurvivalAI>), // AI mode, but gets progressively harder
+    None,                                  // local multiplayer
 }
 
 impl PartialEq for SecondPlayerExtensionMode {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::OnlinePlayer {..}, Self::OnlinePlayer {..}) => true,
+            (Self::OnlinePlayer { .. }, Self::OnlinePlayer { .. }) => true,
             (Self::AI(_), Self::AI(_)) => true,
             (Self::SurvivalMode(_), Self::SurvivalMode(_)) => true,
             (Self::None, Self::None) => true,
@@ -36,7 +36,7 @@ pub struct SecondPlayerExtension {
     rerender_board_callback: Callback<ServerMessage>,
 }
 
-use SecondPlayerExtensionMode::{None, AI, OnlinePlayer, SurvivalMode};
+use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
 
 impl SecondPlayerExtension {
     pub fn new(rerender_board_callback: Callback<ServerMessage>) -> Self {
@@ -54,8 +54,11 @@ impl SecondPlayerExtension {
     /// TODO: encapsulate server communication in a separate module
     pub fn init_online(&mut self, lobby: String) {
         self.mode = match net::spawn_connection_tasks(self.rerender_board_callback.clone(), lobby) {
-            Ok((sender, send_update_as_col_num)) => OnlinePlayer { sender, send_update_as_col_num },
-            _ => None
+            Ok((sender, send_update_as_col_num)) => OnlinePlayer {
+                sender,
+                send_update_as_col_num,
+            },
+            _ => None,
         }
     }
 
@@ -72,8 +75,22 @@ impl SecondPlayerExtension {
     /// Hands off control to the second player. The board should then wait for
     /// a rerender message with the second player's move.
     /// Should always be non-blocking.
-    pub fn request_move() {
-        todo!();
+    pub fn request_move(self) {
+        match self.mode {
+            OnlinePlayer {
+                sender: _,
+                send_update_as_col_num,
+            } => {
+                todo!();
+            }
+            AI(ai) => {
+                todo!();
+            }
+            SurvivalMode(ai) => {
+                todo!();
+            }
+            None => {}
+        }
     }
 
     pub fn get_mode(&self) -> &SecondPlayerExtensionMode {
@@ -85,7 +102,11 @@ impl SecondPlayerExtension {
     }
 
     pub fn undo_enabled_for_online(&self) -> bool {
-        if let OnlinePlayer {send_update_as_col_num: no_undo, ..} = &self.mode {
+        if let OnlinePlayer {
+            send_update_as_col_num: no_undo,
+            ..
+        } = &self.mode
+        {
             !*no_undo.borrow()
         } else {
             false
@@ -94,7 +115,7 @@ impl SecondPlayerExtension {
 
     pub fn is_online_player(&self) -> bool {
         match &self.mode {
-            OnlinePlayer {..} => true,
+            OnlinePlayer { .. } => true,
             _ => false,
         }
     }

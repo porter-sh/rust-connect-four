@@ -2,7 +2,11 @@
 //! At a high level, this AI finds the best move(s) by looking at all possible moves
 //! until the end of the game (or however far we set), then picks the move that will
 //! guarantee the soonest win.
-use super::{ai::{AI, SurvivalAI}, position_lookup_table::PositionLookupTable, util};
+use super::{
+    ai::{SurvivalAI, AI},
+    position_lookup_table::PositionLookupTable,
+    util,
+};
 use crate::util::util::{DiskColor, Disks};
 use constants::*;
 use gloo::console::log;
@@ -170,15 +174,23 @@ impl AI for PerfectAI {
                 }
             }
         }
-        log!(self.position_lookup_table.get_num_entries());
+        // log!(self.position_lookup_table.get_num_entries());
         // Chose any one of the best columns at random (if there are multiple).
         Self::random_move_from_scores(score)
+    }
+
+    fn request_move(&mut self, callback: yew::Callback<u8>) {
+        callback.emit(1);
     }
 }
 
 impl SurvivalAI for PerfectAI {
     /// Used for survival mode, to make the AI harder each round.
     fn increment_difficulty(&mut self) {
-        self.max_moves_look_ahead += 1;
+        self.max_moves_look_ahead += 4;
+        log!(format!(
+            "Difficulty increased to {}",
+            self.max_moves_look_ahead
+        ));
     }
 }

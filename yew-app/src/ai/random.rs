@@ -22,4 +22,8 @@ impl AI for RandomAI {
             None => panic!("Fix the random AI, should have returned a value"),
         }
     }
+
+    fn request_move(&mut self, callback: yew::Callback<u8>) {
+        todo!();
+    }
 }

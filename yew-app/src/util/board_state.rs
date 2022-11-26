@@ -1,6 +1,6 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
 use crate::{
-    ai::ai::{AI as AITrait, SurvivalAI},
+    ai::ai::{SurvivalAI, AI as AITrait},
     util::net::ServerMessage::{self, BoardState as BoardStateMessage, SpecialMessage, UndoMove},
     util::{
         second_player_extension::{SecondPlayerExtension, SecondPlayerExtensionMode},
@@ -64,8 +64,10 @@ impl BoardState {
     /// If playing online, send a message to the server containing the move, and whether
     /// the game was won.
     pub fn update_server_if_online(&mut self, selected_col: u8) {
-        if let OnlinePlayer {sender, send_update_as_col_num}
-            = self.second_player_extension.get_mode()
+        if let OnlinePlayer {
+            sender,
+            send_update_as_col_num,
+        } = self.second_player_extension.get_mode()
         {
             let update = if *send_update_as_col_num.borrow() {
                 SpecialMessage(selected_col)
@@ -112,7 +114,6 @@ impl BoardState {
     pub fn update_state_from_second_player_message(&mut self, msg: ServerMessage) {
         log!(format!("Received {:?}", msg));
         match msg {
-
             BoardStateMessage(update) | UndoMove(update) => {
                 // if the message is a non-winning move, it will be the client's turn next, so they can move
                 if !update.game_won && self.current_player != DiskColor::Empty {
@@ -134,7 +135,6 @@ impl BoardState {
                     self.can_move = false;
                 }
             }
-
         }
     }
 
