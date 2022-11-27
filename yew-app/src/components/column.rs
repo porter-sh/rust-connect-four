@@ -9,7 +9,9 @@
 use crate::util::{board_state::BoardState, util::DiskColor};
 use constants::*;
 use std::{cell::RefCell, rc::Rc};
-use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
+use yew::{classes, html, Callback, Component, Context, Html, KeyboardEvent, MouseEvent, Properties};
+use gloo::events::EventListener;
+use wasm_bindgen::JsCast;
 
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
@@ -31,6 +33,7 @@ pub enum ColumnMessages {
 /// When not in a game or if the game is won, Column will not accept player input
 pub struct Column {
     onclick: Callback<MouseEvent>, // Callback to drop a disk into the Column
+    global_keyboard_listener: RefCell<Option<EventListener>>
 }
 
 /// Allows Column to be used as an HTML component
@@ -40,24 +43,26 @@ impl Component for Column {
 
     /// Creates the Column component and creates the onclick callback
     fn create(ctx: &Context<Self>) -> Self {
+        let col_num = ctx.props().col_num as u8;
+        let onclick = {
+            let board = Rc::clone(&ctx.props().disks);
+            // let rerender_board_callback = ctx.props().rerender_board_callback.clone();
+            ctx.link().callback(move |_| {
+                let mut disks = board.borrow_mut();
+                if !disks.board_state.is_col_full(col_num) {
+                    disks.make_move(col_num).unwrap();
+                    disks.update_server_if_online(col_num);
+                    disks.run_ai_if_applicable();
+
+                    return ColumnMessages::Rerender;
+                }
+
+                ColumnMessages::NoChange
+            })
+        };
         Self {
-            onclick: {
-                let board = Rc::clone(&ctx.props().disks);
-                let col_num = ctx.props().col_num as u8;
-                // let rerender_board_callback = ctx.props().rerender_board_callback.clone();
-                ctx.link().callback(move |_| {
-                    let mut disks = board.borrow_mut();
-                    if !disks.board_state.is_col_full(col_num) {
-                        disks.make_move(col_num).unwrap();
-                        disks.update_server_if_online(col_num);
-                        disks.run_ai_if_applicable();
-
-                        return ColumnMessages::Rerender;
-                    }
-
-                    ColumnMessages::NoChange
-                })
-            },
+            onclick,
+            global_keyboard_listener: RefCell::new(None)
         }
     }
 
@@ -86,11 +91,31 @@ impl Component for Column {
         html! {
             <>
                 {if ctx.props().in_game && ctx.props().disks.borrow().can_move
-                        && !ctx.props().disks.borrow().board_state.is_col_full(ctx.props().col_num) {html!{<button
-                    class={ "btn" }
-                    style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
-                    onclick={ self.onclick.clone() }
-                />}} else {html!{}}}
+                        && !ctx.props().disks.borrow().board_state.is_col_full(ctx.props().col_num) {
+                    let onclick = self.onclick.clone();
+                    let col_num = ctx.props().col_num;
+                    if self.global_keyboard_listener.borrow().is_none() {
+                        *self.global_keyboard_listener.borrow_mut() = Some(EventListener::new(
+                            &gloo::utils::document(),
+                            "keydown",
+                            move |event| {
+                                if let Some(key_event) = event.dyn_ref::<KeyboardEvent>() {
+                                    if key_event.key() == (col_num + 1).to_string() {
+                                        onclick.emit(MouseEvent::new("mousedown").unwrap());
+                                    }
+                                }
+                            }
+                        ));
+                    }
+                    html!{<button
+                        class={ "btn" }
+                        style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
+                        onclick={ self.onclick.clone() }
+                    />}
+                } else {
+                    *self.global_keyboard_listener.borrow_mut() = None;
+                    html!{}
+                }}
                 {(0..(BOARD_HEIGHT as u8)).into_iter().map(|row_num| html! { // Display all disks in the Column
                     <div
                         class={classes!(ctx.props().style_of_disk(row_num))}
