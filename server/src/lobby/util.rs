@@ -8,13 +8,16 @@ use tokio::task::JoinHandle;
 /// as well as the last board state (for when new players / spectators join)
 pub struct Subtasks {
     pub tasks: Vec<JoinHandle<()>>,
-    pub last_board_state: Vec<u8>
+    pub last_board_state: Vec<u8>,
 }
 
 /// Default, last_board_state is a board at the start of the match
 impl Default for Subtasks {
     fn default() -> Self {
-        Subtasks { tasks: Vec::new(), last_board_state: vec![0; ConnectionProtocol::MESSAGE_SIZE] }
+        Subtasks {
+            tasks: Vec::new(),
+            last_board_state: vec![0; ConnectionProtocol::MESSAGE_SIZE],
+        }
     }
 }
 
@@ -23,12 +26,12 @@ impl Default for Subtasks {
 #[derive(Debug)]
 pub enum Message {
     BoardState(MessageFromClient),
-    SpecialMessage(u8)
+    SpecialMessage(u8),
 }
 
 /// Message from the client that is ConnectionProtocol::MESSAGE_SIZE bytes
 #[derive(Debug, Clone)]
 pub struct MessageFromClient {
     pub binary: Vec<u8>,
-    pub player_num: u8
+    pub player_num: u8,
 }

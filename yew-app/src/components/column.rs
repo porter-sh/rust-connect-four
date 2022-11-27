@@ -8,10 +8,12 @@
 
 use crate::util::{board_state::BoardState, util::DiskColor};
 use constants::*;
-use std::{cell::RefCell, rc::Rc};
-use yew::{classes, html, Callback, Component, Context, Html, KeyboardEvent, MouseEvent, Properties};
 use gloo::events::EventListener;
+use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::JsCast;
+use yew::{
+    classes, html, Callback, Component, Context, Html, KeyboardEvent, MouseEvent, Properties,
+};
 
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
@@ -33,7 +35,7 @@ pub enum ColumnMessages {
 /// When not in a game or if the game is won, Column will not accept player input
 pub struct Column {
     onclick: Callback<MouseEvent>, // Callback to drop a disk into the Column
-    global_keyboard_listener: RefCell<Option<EventListener>>
+    global_keyboard_listener: RefCell<Option<EventListener>>,
 }
 
 /// Allows Column to be used as an HTML component
@@ -62,7 +64,7 @@ impl Component for Column {
         };
         Self {
             onclick,
-            global_keyboard_listener: RefCell::new(None)
+            global_keyboard_listener: RefCell::new(None),
         }
     }
 

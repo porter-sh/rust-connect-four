@@ -24,7 +24,11 @@ impl Default for Disks {
 
 impl From<GameUpdate> for Disks {
     fn from(game: GameUpdate) -> Self {
-        Self {position: game.position, mask: game.mask, is_p1_turn: game.is_p1_turn}
+        Self {
+            position: game.position,
+            mask: game.mask,
+            is_p1_turn: game.is_p1_turn,
+        }
     }
 }
 
@@ -140,7 +144,12 @@ impl Disks {
     }
 
     pub fn to_game_update(&self, game_won: bool) -> GameUpdate {
-        GameUpdate { position: self.position, mask: self.mask, is_p1_turn: self.is_p1_turn, game_won }
+        GameUpdate {
+            position: self.position,
+            mask: self.mask,
+            is_p1_turn: self.is_p1_turn,
+            game_won,
+        }
     }
 
     ///// PRIVATE METHODS /////
