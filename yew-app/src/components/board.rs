@@ -37,7 +37,9 @@ impl Component for Board {
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
-            self.board.borrow_mut().update_state_from_second_player_message(msg);
+            self.board
+                .borrow_mut()
+                .update_state_from_second_player_message(msg);
         }
         true
     }
@@ -88,8 +90,8 @@ impl Board {
 
     fn get_history_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> HistoryHandle {
         /* let callback = ctx
-            .link()
-            .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));*/
+        .link()
+        .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));*/
         ctx.link()
             .add_history_listener(ctx.link().callback(move |history: AnyHistory| {
                 let board_clone = Rc::clone(&board);

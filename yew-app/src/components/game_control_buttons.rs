@@ -42,7 +42,8 @@ impl Component for GameControlButtons {
                         return;
                     } // At the start of the game
 
-                    if !disks.second_player_extension.is_online_player() { // Revert to previous player
+                    if !disks.second_player_extension.is_online_player() {
+                        // Revert to previous player
                         disks.current_player = if disks.current_player == DiskColor::P1 {
                             DiskColor::P2
                         } else {

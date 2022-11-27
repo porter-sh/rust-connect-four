@@ -14,7 +14,7 @@ pub struct GameUpdate {
     pub position: u64,
     pub mask: u64,
     pub is_p1_turn: bool,
-    pub game_won: bool
+    pub game_won: bool,
 }
 
 impl ConnectionProtocol {
@@ -37,7 +37,7 @@ impl ConnectionProtocol {
 
     /// Number of bytes in a message representing a GameUpdate to be sent over a websocket
     pub const MESSAGE_SIZE: usize = 14;
-    
+
     const IS_NOT_P1_TURN: u64 = 1 << (2 * BOARD_HEIGHT + 1);
     const GAME_WON: u64 = 1 << (3 * BOARD_HEIGHT + 2);
     const UNDO_MOVE_OFFSET: u64 = 4 * BOARD_HEIGHT as u64 + 3;
@@ -45,8 +45,10 @@ impl ConnectionProtocol {
 
     /// Turns a vector of bytes, sent over a websocket, into an easily usable GameUpdate object
     /// Fails if bytes.len() != ConnectionProtocol::MESSAGE_SIZE
-    pub fn assemble_message(bytes: Vec<u8>) -> Result<GameUpdate, ()> {
-        if bytes.len() != Self::MESSAGE_SIZE { return Err(()); }
+    pub fn decode_message(bytes: Vec<u8>) -> Result<GameUpdate, ()> {
+        if bytes.len() != Self::MESSAGE_SIZE {
+            return Err(());
+        }
 
         let mut position = 0;
         for i in 0..(Self::MESSAGE_SIZE / 2) {
@@ -70,12 +72,17 @@ impl ConnectionProtocol {
 
         mask &= !Self::UNDO_MOVE;
 
-        Ok(GameUpdate {position, mask, is_p1_turn, game_won})
+        Ok(GameUpdate {
+            position,
+            mask,
+            is_p1_turn,
+            game_won,
+        })
     }
 
     /// Turns a GameUpdate into a vector of bytes, which can be sent over a websocket
     /// The returned Vec has a length of ConnectionProtocol::MESSAGE_SIZE
-    pub fn disassemble_message(mut msg: GameUpdate) -> Vec<u8> {
+    pub fn encode_message(mut msg: GameUpdate) -> Vec<u8> {
         const MAX_U8: u64 = std::u8::MAX as u64;
 
         let mut bytes = Vec::with_capacity(Self::MESSAGE_SIZE);
@@ -98,12 +105,14 @@ impl ConnectionProtocol {
         bytes
     }
 
-    pub fn disassemble_undo_message(mut msg: GameUpdate) -> Vec<u8> {
+    pub fn encode_undo_message(mut msg: GameUpdate) -> Vec<u8> {
         msg.mask |= Self::UNDO_MOVE;
-        Self::disassemble_message(msg)
+        Self::encode_message(msg)
     }
 
     pub fn is_undo_move(bytes: &Vec<u8>) -> bool {
-        bytes[(Self::MESSAGE_SIZE / 2 + Self::UNDO_MOVE_OFFSET as usize / 8)] & (1 << Self::UNDO_MOVE_OFFSET % 8) != 0
+        bytes[(Self::MESSAGE_SIZE / 2 + Self::UNDO_MOVE_OFFSET as usize / 8)]
+            & (1 << Self::UNDO_MOVE_OFFSET % 8)
+            != 0
     }
 }

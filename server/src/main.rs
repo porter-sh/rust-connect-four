@@ -5,13 +5,13 @@ use constants::WEBSOCKET_ADDRESS;
 
 use tokio::{
     net::{TcpListener, TcpStream},
-    sync::mpsc::UnboundedSender
+    sync::mpsc::UnboundedSender,
 };
 use tokio_tungstenite::WebSocketStream;
 
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex}
+    sync::{Arc, Mutex},
 };
 
 mod connection;
@@ -27,7 +27,6 @@ pub type Lobbies = HashMap<String, UnboundedSender<Client>>;
 /// Uses a multithreaded asynchronous runtime
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-
     #[cfg(feature = "cppintegration")]
     println!("C++ integration enabled.");
     #[cfg(not(feature = "cppintegration"))]
@@ -48,5 +47,4 @@ async fn main() -> std::io::Result<()> {
             }
         });
     }
-
 }

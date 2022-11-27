@@ -4,10 +4,13 @@ use futures::{
     SinkExt, StreamExt,
 };
 use gloo::utils::errors::JsError;
-use gloo_net::websocket::{futures::WebSocket, Message::{self, Bytes, Text}};
+use gloo_net::websocket::{
+    futures::WebSocket,
+    Message::{self, Bytes, Text},
+};
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
-    oneshot::{self, Receiver as OneshotReceiver, Sender as OneshotSender}
+    oneshot::{self, Receiver as OneshotReceiver, Sender as OneshotSender},
 };
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
@@ -21,15 +24,15 @@ use std::{cell::RefCell, rc::Rc};
 pub enum ServerMessage {
     BoardState(GameUpdate),
     SpecialMessage(u8),
-    UndoMove(GameUpdate)
+    UndoMove(GameUpdate),
 }
 
 impl From<ServerMessage> for Message {
     fn from(msg: ServerMessage) -> Message {
         Bytes(match msg {
-            BoardState(update) => ConnectionProtocol::disassemble_message(update),
+            BoardState(update) => ConnectionProtocol::encode_message(update),
             SpecialMessage(msg) => vec![msg],
-            UndoMove(update) => ConnectionProtocol::disassemble_undo_message(update)
+            UndoMove(update) => ConnectionProtocol::encode_message(update),
         })
     }
 }
@@ -40,9 +43,10 @@ use ServerMessage::{BoardState, SpecialMessage, UndoMove};
 /// On success, returns:
 ///     an UnboundedSender to sent messages to the writer thread, which will then write to the server
 ///     a mutable boolean reference to store if ServerMessage should be the selected column or the entire board, as determined by the server
-pub fn spawn_connection_tasks(callback: Callback<ServerMessage>, lobby: String)
-    -> Result<(UnboundedSender<ServerMessage>, Rc<RefCell<bool>>), JsError>
-{
+pub fn spawn_connection_tasks(
+    callback: Callback<ServerMessage>,
+    lobby: String,
+) -> Result<(UnboundedSender<ServerMessage>, Rc<RefCell<bool>>), JsError> {
     // Task communication with server
     let websocket = WebSocket::open(WEBSOCKET_ADDRESS)?;
     let (writer, reader) = websocket.split();
@@ -53,7 +57,12 @@ pub fn spawn_connection_tasks(callback: Callback<ServerMessage>, lobby: String)
 
     let send_update_as_col_num = Rc::new(RefCell::new(false));
 
-    spawn_reader_task(reader, callback, connection_est_sender, Rc::clone(&send_update_as_col_num));
+    spawn_reader_task(
+        reader,
+        callback,
+        connection_est_sender,
+        Rc::clone(&send_update_as_col_num),
+    );
     spawn_writer_task(writer, receiver, connection_est_receiver, lobby);
 
     Ok((sender, send_update_as_col_num))
@@ -64,7 +73,7 @@ fn spawn_reader_task(
     mut reader: SplitStream<WebSocket>,
     callback: Callback<ServerMessage>,
     connection_est_sender: OneshotSender<()>,
-    send_update_as_col_num: Rc<RefCell<bool>>
+    send_update_as_col_num: Rc<RefCell<bool>>,
 ) {
     spawn_local(async move {
         log!("Entered reader thread.");
@@ -86,7 +95,7 @@ fn spawn_reader_task(
                 Bytes(bytes) => {
                     if bytes.len() == 1 {
                         callback.emit(SpecialMessage(bytes[0]));
-                    } else if let Ok(update) = ConnectionProtocol::assemble_message(bytes) {
+                    } else if let Ok(update) = ConnectionProtocol::decode_message(bytes) {
                         callback.emit(BoardState(update));
                     } else {
                         error!("Received unrecognizable message from server.");
@@ -106,7 +115,7 @@ fn spawn_writer_task(
     mut writer: SplitSink<WebSocket, Message>,
     mut receiver: UnboundedReceiver<ServerMessage>,
     connection_est_receiver: OneshotReceiver<()>,
-    lobby: String
+    lobby: String,
 ) {
     spawn_local(async move {
         log!("Entered writer thread.");
