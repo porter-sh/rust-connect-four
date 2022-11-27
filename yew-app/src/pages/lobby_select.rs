@@ -15,7 +15,7 @@ pub fn lobby_select() -> Html {
                 <p class="menu-txt">{"Choose Lobby"}</p>
                 <form action={"/online-multiplayer/"}>
                     <label for="lobby">{"Lobby Name: "}</label>
-                    <input type="text" name="lobby" id="lobby-input" required=true />
+                    <input type="text" name="lobby" id="lobby-input" />
                     <input type="submit" value="Submit" class="menu-btn"/>
                 </form>
                 <GameButton<Route> text={"Back"} route={Route::Home} />

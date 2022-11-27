@@ -24,7 +24,7 @@ pub struct ColumnProperties {
 
 /// A message enum to tell the Column whether to rerender or not
 pub enum ColumnMessages {
-    Rerender, // MouseEvent type is irrelevant, supplied to rerender_board_callback as a necessary, but unused, parameter
+    Rerender,
     NoChange,
 }
 

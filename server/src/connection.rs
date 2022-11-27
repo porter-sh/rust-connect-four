@@ -41,22 +41,25 @@ pub async fn handle_connection(incoming: TcpStream, lobbies: Arc<Mutex<Lobbies>>
         println!("{}", lobby);
         task::block_in_place(move || {
 
-            let lobbies_ref = Arc::clone(&lobbies);
             let lobby_name = lobby.clone();
-            if let Ok(mut lobbies) = lobbies.lock() {
+            if let Ok(mut lobbies_map) = lobbies.lock() {
 
                 // Send the player to the lobby if it already exists
-                if let Some(sender) = lobbies.get(&lobby) {
+                if let Some(sender) = lobbies_map.get(&lobby) {
                     sender.send(client).unwrap_or_default();
+                    if lobby == "".to_string() {
+                        lobbies_map.remove(&lobby);
+                    }
                     println!("Sent player to lobby.");
                 } else { // If the lobby does not already exist
                     // Create a new lobby
+                    let lobbies_ref = Arc::clone(&lobbies);
                     let new_client_sender = lobby::create_lobby(Box::new(
                         move || {
                             lobbies_ref.lock().unwrap().remove(&lobby_name);
                         }
                     ));
-                    lobbies.insert(lobby, new_client_sender.clone());
+                    lobbies_map.insert(lobby, new_client_sender.clone());
                     // Send the player to the new lobby
                     new_client_sender.send(client).unwrap_or_default();
                     println!("Created lobby.");
