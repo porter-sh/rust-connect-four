@@ -36,7 +36,7 @@ async fn run_lobby(
     mut receiver: UnboundedReceiver<Message>,
     game_update_sender: BroadcastSender<MessageFromClient>,
     subtasks: Arc<Mutex<Subtasks>>,
-    remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>
+    remove_lobby: Option<Box<dyn FnOnce() -> () + Send + Sync>>
 ) {
 
     #[cfg(feature = "cppintegration")]
@@ -89,7 +89,9 @@ async fn run_lobby(
     // Delete this lobby and kill all tasks listening to players
     // All writer tasks will end once the senders to them are dropped
     task::block_in_place(move || {
-        remove_lobby();
+        if let Some(remove_lobby_callback) = remove_lobby {
+            remove_lobby_callback();
+        }
 
         for subtask in &subtasks.lock().unwrap().tasks {
             subtask.abort();
@@ -100,7 +102,7 @@ async fn run_lobby(
 
 /// create_lobby starts the run_lobby and new_client_handler tasks for the given lobby
 /// Returns a sender which can send new clients to the lobby
-pub fn create_lobby(remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>) -> UnboundedSender<Client> {
+pub fn create_lobby(remove_lobby: Option<Box<dyn FnOnce() -> () + Send + Sync>>) -> UnboundedSender<Client> {
 
     let (sender, receiver) = mpsc::unbounded_channel();
     let (new_client_sender, new_client_receiver)

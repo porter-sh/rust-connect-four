@@ -24,7 +24,7 @@ use futures::{SinkExt, StreamExt, stream::{SplitSink, SplitStream}};
 
 use std::sync::{Arc, Mutex};
 
-/// new_client_handler spawns threads to read and write data over websockets to clients and to communicate with the main lobby task
+/// new_client_handler spawns tasks to read and write data over websockets to clients and to communicate with the main lobby task
 /// It also tells clients whether they are playing (and as which player) or spectating
 /// 
 /// Async to be run as a new task whenever a new lobby is created
