@@ -5,8 +5,9 @@ fn main() {
     println!("cargo:rerun-if-changed=cpplib/board.cpp");
     cc::Build::new()
         .cpp(true)
-        .file("cpplib/board.cc")
+        .file("cpplib/board.cpp")
         .file("cpplib/safe_board.cpp")
+        // .flag("-std=c++20")
         .compile("board");
 
     // bindgen::Builder::default()
