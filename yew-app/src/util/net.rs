@@ -32,7 +32,7 @@ impl From<ServerMessage> for Message {
         Bytes(match msg {
             BoardState(update) => ConnectionProtocol::encode_message(update),
             SpecialMessage(msg) => vec![msg],
-            UndoMove(update) => ConnectionProtocol::encode_message(update),
+            UndoMove(update) => ConnectionProtocol::encode_undo_message(update),
         })
     }
 }

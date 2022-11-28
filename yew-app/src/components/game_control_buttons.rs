@@ -92,6 +92,7 @@ impl Component for GameControlButtons {
                                 let disks = ctx.props().board.borrow();
                                 if !disks.can_move
                                     && disks.second_player_extension.undo_enabled_for_online()
+                                    && disks.num_moves > 0
                                 {
                                     html! {
                                         <button class="control-btn" onclick={self.undo_callback.clone()}>
