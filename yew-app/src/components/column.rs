@@ -51,15 +51,14 @@ impl Component for Column {
             // let rerender_board_callback = ctx.props().rerender_board_callback.clone();
             ctx.link().callback(move |_| {
                 let mut disks = board.borrow_mut();
-                if !disks.board_state.is_col_full(col_num) {
-                    disks.make_move(col_num).unwrap();
-                    disks.update_server_if_online(col_num);
-                    disks.run_ai_if_applicable();
+                // disks.make_move(col_num).unwrap();
+                // disks.update_server_if_online(col_num);
+                // disks.run_ai_if_applicable();
 
-                    return ColumnMessages::Rerender;
-                }
-
-                ColumnMessages::NoChange
+                disks
+                    .make_move_and_handoff_to_second_player(col_num)
+                    .unwrap_or_default();
+                return ColumnMessages::Rerender;
             })
         };
         Self {
@@ -93,7 +92,7 @@ impl Component for Column {
         html! {
             <>
                 {if ctx.props().in_game && ctx.props().disks.borrow().can_move
-                        && !ctx.props().disks.borrow().board_state.is_col_full(ctx.props().col_num) {
+                        && !ctx.props().disks.borrow().disks.is_col_full(ctx.props().col_num) {
                     let onclick = self.onclick.clone();
                     let col_num = ctx.props().col_num;
                     if self.global_keyboard_listener.borrow().is_none() {
@@ -131,7 +130,7 @@ impl Component for Column {
 
 impl ColumnProperties {
     fn style_of_disk(&self, row: u8) -> String {
-        match self.disks.borrow().board_state.get_disk(row, self.col_num) {
+        match self.disks.borrow().disks.get_disk(row, self.col_num) {
             DiskColor::Empty => "disk-empty",
             DiskColor::P1 => "disk-p1",
             DiskColor::P2 => "disk-p2",

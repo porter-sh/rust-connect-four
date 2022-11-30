@@ -2,11 +2,13 @@
 //! Board contains the internal BoardState, and renders that state through Column components
 //! Board also accepts user input when in the middle of a game via Column components
 
+use super::{column::*, game_control_buttons::GameControlButtons};
 use crate::{
-    ai::{perfect::PerfectAI, random::RandomAI},
-    components::{column::*, game_control_buttons::GameControlButtons},
     router::{AIRoute, Route},
-    util::{board_state::BoardState, net::ServerMessage},
+    util::{
+        board_state::BoardState, net::ServerMessage, util::SecondPlayerAIMode,
+        util::SecondPlayerSurvivalAIMode,
+    },
 };
 use constants::*;
 use std::{cell::RefCell, rc::Rc};
@@ -115,13 +117,11 @@ impl Board {
                 }
                 Route::VersusBot => {
                     match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {
-                        AIRoute::Random => board.borrow_mut().init_ai(Box::new(RandomAI)),
-                        AIRoute::Perfect => {
-                            board.borrow_mut().init_ai(Box::new(PerfectAI::new(10)))
-                        }
+                        AIRoute::Random => board.borrow_mut().init_ai(SecondPlayerAIMode::Random),
+                        AIRoute::Perfect => board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect),
                         AIRoute::Survival => board
                             .borrow_mut()
-                            .init_survival(Box::new(PerfectAI::new(1))),
+                            .init_survival(SecondPlayerSurvivalAIMode::Perfect),
                     };
                 }
                 _ => board

@@ -3,9 +3,17 @@
 use constants::*;
 use std::cmp::min;
 
-/// 2D array of player disks to internally store the board state
+pub enum SecondPlayerAIMode {
+    Random,
+    Perfect,
+}
 
-#[derive(PartialEq, Clone)]
+pub enum SecondPlayerSurvivalAIMode {
+    Perfect,
+}
+
+/// 2D array of player disks to internally store the board state
+#[derive(PartialEq, Clone, Debug)]
 pub struct Disks {
     position: u64, // records the location of disks for the current player as 1s
     mask: u64,     // records the location of all disks as 1s
@@ -68,9 +76,9 @@ impl Disks {
     }
 
     /// Puts a disk of the given color in the given column
-    pub fn drop_disk(&mut self, col: u8) -> Result<(), ()> {
+    pub fn drop_disk(&mut self, col: u8) -> Result<(), String> {
         if self.is_col_full(col) {
-            Err(())
+            Err("Cannot drop disk in full column".to_string())
         } else {
             self.is_p1_turn = !self.is_p1_turn;
             self.position ^= self.mask;

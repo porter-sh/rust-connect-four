@@ -3,13 +3,11 @@
 //! for user input outside of the game, like "Quit Game" and "Undo".
 //! All of the buttons are created in this file, to make it easy to have
 //! them all within the same <div> element.
-
-use constants::ConnectionProtocol;
-
 use crate::{
     router::Route,
     util::{board_state::BoardState, util::DiskColor},
 };
+use constants::ConnectionProtocol;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, Properties};
 use yew_router::prelude::*;
@@ -31,40 +29,11 @@ impl Component for GameControlButtons {
     type Properties = GameControlButtonProperties;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let board = Rc::clone(&ctx.props().board);
-        let rerender_board_callback_clone = ctx.props().rerender_board_callback.clone();
         Self {
-            undo_callback: Callback::from(move |_| {
-                // Limit the scope of BoardState mutable borrow so other components can check the BoardState when they rerender
-                {
-                    let mut disks = board.borrow_mut();
-                    if disks.num_moves == 0 {
-                        return;
-                    } // At the start of the game
-
-                    if !disks.second_player_extension.is_online_player() {
-                        // Revert to previous player
-                        disks.current_player = if disks.current_player == DiskColor::P1 {
-                            DiskColor::P2
-                        } else {
-                            DiskColor::P1
-                        };
-                    }
-
-                    disks.can_move = true; // Undoes win, allowing board interaction
-                    disks.num_moves -= 1;
-
-                    let num_moves = disks.num_moves;
-
-                    let col = disks.game_history[num_moves as usize]; // Get the column the last move was made in
-                    disks.board_state.rm_disk_from_col(col); // Remove the disk from the columns
-
-                    disks.update_server_if_online(ConnectionProtocol::UNDO);
-                } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
-
-                // Tell the Board to rerender
-                rerender_board_callback_clone.emit(());
-            }),
+            undo_callback: Self::create_undo_move_callback(
+                Rc::clone(&ctx.props().board),
+                ctx.props().rerender_board_callback.clone(),
+            ),
         }
     }
 
@@ -115,5 +84,46 @@ impl Component for GameControlButtons {
             error!("Error rendering game control buttons.");
             html! {}
         }
+    }
+}
+
+impl GameControlButtons {
+    fn create_undo_move_callback(
+        board: Rc<RefCell<BoardState>>,
+        rerender_board_callback: Callback<()>,
+    ) -> Callback<MouseEvent> {
+        Callback::from(move |_| {
+            // Limit the scope of BoardState mutable borrow so other components can check the BoardState when they rerender
+            {
+                let mut disks = board.borrow_mut();
+                if disks.num_moves == 0 {
+                    return;
+                } // At the start of the game
+
+                if !disks.second_player_extension.is_online_player() {
+                    // Revert to previous player
+                    disks.current_player = if disks.current_player == DiskColor::P1 {
+                        DiskColor::P2
+                    } else {
+                        DiskColor::P1
+                    };
+                }
+
+                disks.can_move = true; // Undoes win, allowing board interaction
+                disks.num_moves -= 1;
+
+                let num_moves = disks.num_moves;
+
+                let col = disks.game_history[num_moves as usize]; // Get the column the last move was made in
+                disks.disks.rm_disk_from_col(col); // Remove the disk from the columns
+
+                disks
+                    .handoff_to_second_player(ConnectionProtocol::UNDO)
+                    .unwrap_or_default();
+            } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
+
+            // Tell the Board to rerender
+            rerender_board_callback.emit(());
+        })
     }
 }

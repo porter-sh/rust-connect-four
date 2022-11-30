@@ -1,3 +1,4 @@
+use crate::util::util::Disks;
 use constants::{ConnectionProtocol, GameUpdate, WEBSOCKET_ADDRESS};
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -23,7 +24,8 @@ use std::{cell::RefCell, rc::Rc};
 #[derive(Debug)]
 pub enum ServerMessage {
     BoardState(GameUpdate),
-    SpecialMessage(u8),
+    Disks(Disks),
+    SimpleMessage(u8),
     UndoMove(GameUpdate),
 }
 
@@ -31,13 +33,14 @@ impl From<ServerMessage> for Message {
     fn from(msg: ServerMessage) -> Message {
         Bytes(match msg {
             BoardState(update) => ConnectionProtocol::encode_message(update),
-            SpecialMessage(msg) => vec![msg],
+            SimpleMessage(msg) => vec![msg],
             UndoMove(update) => ConnectionProtocol::encode_undo_message(update),
+            _ => panic!("Cannot send raw Disks variant to the server."),
         })
     }
 }
 
-use ServerMessage::{BoardState, SpecialMessage, UndoMove};
+use ServerMessage::{BoardState, SimpleMessage, UndoMove};
 
 /// Spawns reader and writer tasks to communicate with the server
 /// On success, returns:
@@ -94,7 +97,7 @@ fn spawn_reader_task(
             match msg {
                 Bytes(bytes) => {
                     if bytes.len() == 1 {
-                        callback.emit(SpecialMessage(bytes[0]));
+                        callback.emit(SimpleMessage(bytes[0]));
                     } else if let Ok(update) = ConnectionProtocol::decode_message(bytes) {
                         callback.emit(BoardState(update));
                     } else {

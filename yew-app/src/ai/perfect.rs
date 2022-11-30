@@ -2,23 +2,95 @@
 //! At a high level, this AI finds the best move(s) by looking at all possible moves
 //! until the end of the game (or however far we set), then picks the move that will
 //! guarantee the soonest win.
+use constants::{BOARD_HEIGHT, BOARD_WIDTH, LOOKUP_TABLE_SIZE};
+
 use super::{
     ai::{SurvivalAI, AI},
     position_lookup_table::PositionLookupTable,
     util,
 };
-use crate::util::util::{DiskColor, Disks};
-use constants::*;
+use crate::util::{net::ServerMessage, util::Disks};
 use gloo::console::log;
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use wasm_bindgen_futures::spawn_local;
+use yew::Callback;
+use ServerMessage::SimpleMessage;
 
 pub struct PerfectAI {
+    request_sender: UnboundedSender<ServerMessage>,
+}
+
+struct PerfectAIHelper {
     max_moves_look_ahead: u8,
     // Stores a hashmap of recent calculated board states, to avoid recalculating
     position_lookup_table: PositionLookupTable,
 }
 
 impl PerfectAI {
+    pub fn new(max_moves_look_ahead: u8, rerender_board_callback: Callback<ServerMessage>) -> Self {
+        let (request_sender, receiver) = mpsc::unbounded_channel();
+        Self::spawn_computation_task(receiver, rerender_board_callback, max_moves_look_ahead);
+        Self { request_sender }
+    }
+
+    fn spawn_computation_task(
+        mut receiver: UnboundedReceiver<ServerMessage>,
+        rerender_board_callback: Callback<ServerMessage>,
+        max_moves_look_ahead: u8,
+    ) {
+        spawn_local(async move {
+            let mut ai = PerfectAIHelper::new(max_moves_look_ahead);
+            while let Some(msg) = receiver.recv().await {
+                match msg {
+                    ServerMessage::Disks(disks) => {
+                        rerender_board_callback.emit(SimpleMessage(ai.get_move(&disks)));
+                    }
+                    ServerMessage::SimpleMessage(inc) => {
+                        ai.max_moves_look_ahead += inc;
+                        log!(format!(
+                            "Difficulty increased to {}",
+                            ai.max_moves_look_ahead
+                        ));
+                    }
+                    _ => panic!("Received message the AI thread cannot handle."),
+                }
+            }
+        });
+    }
+}
+
+impl AI for PerfectAI {
+    fn request_move(&self, disks: &Disks) {
+        self.request_sender
+            .send(ServerMessage::Disks(disks.clone()))
+            .unwrap_or_default();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+impl SurvivalAI for PerfectAI {
+    /// Used for survival mode, to make the AI harder each round.
+    fn increment_difficulty(&mut self) {
+        self.request_sender
+            .send(SimpleMessage(4))
+            .unwrap_or_default();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+impl PerfectAIHelper {
     const COLUMN_ORDER: [u8; BOARD_WIDTH as usize] = [3, 2, 4, 1, 5, 0, 6];
+
+    // PerfectAIHelper::new(max_moves_look_ahead)
+    fn new(max_moves_look_ahead: u8) -> PerfectAIHelper {
+        PerfectAIHelper {
+            max_moves_look_ahead,
+            position_lookup_table: PositionLookupTable::new(LOOKUP_TABLE_SIZE),
+        }
+    }
+
     /// Choose which column to drop the disk in given their scores.
     /// If there are multiple columns with the same score, choose one at random.
     fn random_move_from_scores(scores: [i8; BOARD_WIDTH as usize]) -> u8 {
@@ -59,15 +131,6 @@ impl PerfectAI {
         None
     }
 
-    ////////////////////////////////////////////////////////////////
-
-    pub fn new(max_moves_look_ahead: u8) -> Self {
-        Self {
-            max_moves_look_ahead,
-            position_lookup_table: PositionLookupTable::new(LOOKUP_TABLE_SIZE),
-        }
-    }
-
     /// Get the score of some board state for a given player.
     /// Score = 43 - num_moves_until_end, or 0 for draw. If the player cannot win, score = -score.
     /// Recursive alpha-beta pruning algorithm, taking advantage of the fact
@@ -76,7 +139,6 @@ impl PerfectAI {
     fn get_score(
         &mut self,
         board: &Disks,
-        player: DiskColor,
         num_moves_into_game: u8,
         num_moves_look_ahead: u8,
         mut min_self_score: i8,
@@ -119,11 +181,6 @@ impl PerfectAI {
             if let Some(board) = Self::place_disk_in_copy(board, Self::COLUMN_ORDER[col]) {
                 let score = -self.get_score(
                     &board,
-                    if player == DiskColor::P1 {
-                        DiskColor::P2
-                    } else {
-                        DiskColor::P1
-                    },
                     num_moves_into_game + 1,
                     num_moves_look_ahead - 1,
                     -min_opponent_score,
@@ -142,11 +199,9 @@ impl PerfectAI {
         self.position_lookup_table.insert(board, min_self_score);
         min_self_score
     }
-}
 
-impl AI for PerfectAI {
     /// Returns which column the AI would drop a disk into.
-    fn get_move(&mut self, board: &Disks, player: DiskColor) -> u8 {
+    fn get_move(&mut self, board: &Disks) -> u8 {
         // start each column with a bad score
         let mut score = [-100; BOARD_WIDTH as usize];
         let num_moves_into_game = board.get_num_disks();
@@ -161,11 +216,6 @@ impl AI for PerfectAI {
                     // otherwise, calculate the score of the board state after the move
                     score[col as usize] = -self.get_score(
                         &board,
-                        if player == DiskColor::P1 {
-                            DiskColor::P2
-                        } else {
-                            DiskColor::P1
-                        },
                         num_moves_into_game + 1,
                         self.max_moves_look_ahead,
                         -100,
@@ -177,20 +227,5 @@ impl AI for PerfectAI {
         // log!(self.position_lookup_table.get_num_entries());
         // Chose any one of the best columns at random (if there are multiple).
         Self::random_move_from_scores(score)
-    }
-
-    fn request_move(&mut self, callback: yew::Callback<u8>) {
-        callback.emit(1);
-    }
-}
-
-impl SurvivalAI for PerfectAI {
-    /// Used for survival mode, to make the AI harder each round.
-    fn increment_difficulty(&mut self) {
-        self.max_moves_look_ahead += 4;
-        log!(format!(
-            "Difficulty increased to {}",
-            self.max_moves_look_ahead
-        ));
     }
 }

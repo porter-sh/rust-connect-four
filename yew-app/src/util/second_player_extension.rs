@@ -1,9 +1,13 @@
+use constants::ConnectionProtocol;
 use tokio::sync::mpsc::UnboundedSender;
 use yew::Callback;
 
 use crate::{
-    ai::ai,
-    util::net::{self, ServerMessage},
+    ai::{ai, perfect::PerfectAI, random::RandomAI},
+    util::net::{
+        self,
+        ServerMessage::{self, BoardState as BoardStateMessage, SimpleMessage, UndoMove},
+    },
 };
 
 use std::{cell::RefCell, rc::Rc};
@@ -18,13 +22,15 @@ pub enum SecondPlayerExtensionMode {
     None,                                  // local multiplayer
 }
 
+use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
+
 impl PartialEq for SecondPlayerExtensionMode {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::OnlinePlayer { .. }, Self::OnlinePlayer { .. }) => true,
-            (Self::AI(_), Self::AI(_)) => true,
-            (Self::SurvivalMode(_), Self::SurvivalMode(_)) => true,
-            (Self::None, Self::None) => true,
+            (OnlinePlayer { .. }, OnlinePlayer { .. }) => true,
+            (AI(_), AI(_)) => true,
+            (SurvivalMode(_), SurvivalMode(_)) => true,
+            (None, None) => true,
             _ => false,
         }
     }
@@ -36,7 +42,10 @@ pub struct SecondPlayerExtension {
     rerender_board_callback: Callback<ServerMessage>,
 }
 
-use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
+use super::{
+    board_state::BoardState,
+    util::{SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
+};
 
 impl SecondPlayerExtension {
     pub fn new(rerender_board_callback: Callback<ServerMessage>) -> Self {
@@ -63,34 +72,51 @@ impl SecondPlayerExtension {
     }
 
     /// Discards the previous extension, and replaces it with a new AI.
-    pub fn init_ai(&mut self, ai: Box<dyn ai::AI>) {
-        self.mode = AI(ai);
+    pub fn init_ai(&mut self, ai_type: SecondPlayerAIMode) {
+        self.mode = AI(match ai_type {
+            SecondPlayerAIMode::Random => {
+                Box::new(RandomAI::new(self.rerender_board_callback.clone()))
+            }
+            SecondPlayerAIMode::Perfect => {
+                Box::new(PerfectAI::new(15, self.rerender_board_callback.clone()))
+            }
+        });
     }
 
     // Discards the previous extension, and creates a new survival mode.
-    pub fn init_survival(&mut self, ai: Box<dyn ai::SurvivalAI>) {
-        self.mode = SurvivalMode(ai)
+    pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
+        self.mode = SurvivalMode(match ai_type {
+            SecondPlayerSurvivalAIMode::Perfect => {
+                Box::new(PerfectAI::new(10, self.rerender_board_callback.clone()))
+            }
+        });
     }
 
     /// Hands off control to the second player. The board should then wait for
     /// a rerender message with the second player's move.
     /// Should always be non-blocking.
-    pub fn request_move(self) {
-        match self.mode {
+    pub fn request_move(&self, selected_col: u8, board_state: &BoardState) -> Result<bool, String> {
+        match &self.mode {
             OnlinePlayer {
-                sender: _,
+                sender,
                 send_update_as_col_num,
             } => {
-                todo!();
+                Self::update_server(
+                    &board_state,
+                    &sender,
+                    Rc::clone(send_update_as_col_num),
+                    selected_col,
+                )?;
             }
             AI(ai) => {
-                todo!();
+                ai.request_move(&board_state.disks);
             }
             SurvivalMode(ai) => {
-                todo!();
+                ai.request_move(&board_state.disks);
             }
-            None => {}
+            None => return Ok(false),
         }
+        Ok(true)
     }
 
     pub fn get_mode(&self) -> &SecondPlayerExtensionMode {
@@ -136,5 +162,26 @@ impl SecondPlayerExtension {
             SecondPlayerExtensionMode::None => true,
             _ => false,
         }
+    }
+
+    fn update_server(
+        board_state: &BoardState,
+        sender: &UnboundedSender<ServerMessage>,
+        send_update_as_col_num: Rc<RefCell<bool>>,
+        selected_col: u8,
+    ) -> Result<(), String> {
+        let update = if *send_update_as_col_num.borrow() {
+            SimpleMessage(selected_col)
+        } else {
+            if selected_col == ConnectionProtocol::UNDO {
+                UndoMove(board_state.disks.to_game_update(!board_state.can_move))
+            } else {
+                BoardStateMessage(board_state.disks.to_game_update(!board_state.can_move))
+            }
+        };
+        if let Err(e) = sender.send(update) {
+            return Err(format!("Failed to send message: {}", e));
+        }
+        Ok(())
     }
 }
