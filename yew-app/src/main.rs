@@ -6,6 +6,19 @@
 //    \\  `----'  //      \\  `----'  //      \\  `----'  //      \\  `----'  //
 //     ``========''        ``========''        ``========''        ``========''
 
+///// TODO LIST /////
+///
+/// Messages to user
+///  - Game won
+///  - Waiting for second player
+///  - Second player disconnected
+///  - Tell online players which color they are
+///  
+/// Improve AI efficiency / moves looked ahead
+/// Add ML based AI
+///
+/// Deploy the code somewhere
+///
 use yew::prelude::*;
 use yew_router::prelude::*;
 

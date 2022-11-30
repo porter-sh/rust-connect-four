@@ -69,10 +69,12 @@ impl BoardState {
     /// Additionally, if if there is a second player extension, request their
     /// move (NON-BLOCKING), then let the board wait for a response in the form
     /// of a callback.
+    /// Returns Result of whether the second player extension will eventually
+    /// call back with a move.
     pub fn make_move_and_handoff_to_second_player(
         &mut self,
         selected_col: u8,
-    ) -> Result<(), String> {
+    ) -> Result<bool, String> {
         self.make_move(selected_col)?;
         if !self.can_move && self.second_player_extension.is_survival_mode() {
             self.second_player_extension
@@ -81,22 +83,25 @@ impl BoardState {
             self.game_history = [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
             self.num_moves = 0;
             self.can_move = true;
-            Ok(())
+            Ok(false)
         } else {
             // Handoff to second player
             self.handoff_to_second_player(selected_col)
         }
     }
 
-    pub fn handoff_to_second_player(&mut self, selected_col: u8) -> Result<(), String> {
+    /// Returns a result of wheter the second player extension will eventually
+    /// call back with a move.
+    pub fn handoff_to_second_player(&mut self, selected_col: u8) -> Result<bool, String> {
         if self
             .second_player_extension
             .request_move(selected_col, self)?
             && selected_col != ConnectionProtocol::UNDO
         {
             self.can_move = false;
+            return Ok(true);
         }
-        Ok(())
+        Ok(false)
     }
 
     /// Handles all the board changes based on a message from the second player.

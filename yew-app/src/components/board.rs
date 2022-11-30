@@ -2,7 +2,7 @@
 //! Board contains the internal BoardState, and renders that state through Column components
 //! Board also accepts user input when in the middle of a game via Column components
 
-use super::{column::*, game_control_buttons::GameControlButtons};
+use super::{column::*, game_control_buttons::UtilityBar};
 use crate::{
     router::{AIRoute, Route},
     util::{
@@ -11,12 +11,14 @@ use crate::{
     },
 };
 use constants::*;
+use gloo::console::log;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
 use yew_router::{prelude::*, scope_ext::HistoryHandle};
 
 pub enum BoardMessages {
     Rerender,
+    RerenderUtilityBar,
     RerenderAndUpdateBoard(ServerMessage),
 }
 
@@ -38,6 +40,7 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        log!("Updating Board");
         if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
             self.board
                 .borrow_mut()
@@ -50,7 +53,7 @@ impl Component for Board {
     /// If in the middle of a game, allows for user input
     /// Renders an UndoButton if playing a supported gamemode
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let rerender_board_callback = ctx.link().callback(|_| BoardMessages::Rerender);
+        let rerender_board_callback = ctx.link().callback(|msg: BoardMessages| msg);
         let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
 
         html! {
@@ -71,7 +74,7 @@ impl Component for Board {
                         }
                     }).collect::<Html>()}
                 </div>
-                <GameControlButtons board={ Rc::clone(&self.board) }
+                <UtilityBar board={ Rc::clone(&self.board) }
                     rerender_board_callback={ rerender_board_callback.clone() } />
             </>
         }

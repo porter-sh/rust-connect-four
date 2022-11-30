@@ -15,13 +15,15 @@ use yew::{
     classes, html, Callback, Component, Context, Html, KeyboardEvent, MouseEvent, Properties,
 };
 
+use super::board::BoardMessages;
+
 /// Properties to allow the UndoButton to interact with other components
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
-    pub col_num: u8,                           // Which column of the Board this Column is
-    pub disks: Rc<RefCell<BoardState>>,        // Mutably share BoardState across components
+    pub col_num: u8,                    // Which column of the Board this Column is
+    pub disks: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
     pub in_game: bool, // Whether Column should allow players to click it and drop disks
-    pub rerender_board_callback: Callback<()>, // Tells the Board component to rerender
+    pub rerender_board_callback: Callback<BoardMessages>, // Tells the Board component to rerender
 }
 
 /// A message enum to tell the Column whether to rerender or not
@@ -51,13 +53,10 @@ impl Component for Column {
             // let rerender_board_callback = ctx.props().rerender_board_callback.clone();
             ctx.link().callback(move |_| {
                 let mut disks = board.borrow_mut();
-                // disks.make_move(col_num).unwrap();
-                // disks.update_server_if_online(col_num);
-                // disks.run_ai_if_applicable();
-
                 disks
                     .make_move_and_handoff_to_second_player(col_num)
                     .unwrap_or_default();
+                // rerender_board_callback.emit(BoardMessages::RerenderUtilityBar); // Todo fix this (it breaks everything)
                 return ColumnMessages::Rerender;
             })
         };
@@ -78,7 +77,9 @@ impl Component for Column {
                     || disks.second_player_extension.is_survival_mode()
                 {
                     // Tell the Board to rerender
-                    ctx.props().rerender_board_callback.emit(());
+                    ctx.props()
+                        .rerender_board_callback
+                        .emit(BoardMessages::Rerender);
                 }
                 true
             }

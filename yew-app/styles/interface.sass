@@ -31,13 +31,29 @@
     box-shadow: 0px 0px 80px -20px #000
     padding: 40px
 
-.control-container
+.utility-container
     margin: auto
     margin-top: 25px
     width: base.$column-width * 7
     height: max-content
     background: transparent
     padding: 0px
+
+.utility-left
+    float: left
+    padding-left: 10px
+
+.utility-right
+    float: right
+    padding-right: 10px
+
+.utility-text-p1
+    font-size: 25px
+    color: base.$p1-disk-color
+
+.utility-text-p2
+    font-size: 25px
+    color: base.$p2-disk-color
 
 %interface-btn
     background-color: base.$interface-btn-color
@@ -54,7 +70,7 @@
     margin-top: 20px
     width: 150px
 
-.control-btn
+.utility-btn
     @extend %interface-btn
     display: inline-block
     margin: 0px
@@ -69,8 +85,8 @@
 .menu-btn:hover
     @extend %interface-btn-hover
 
-.control-btn:hover
+.utility-btn:hover
     @extend %interface-btn-hover
 
-.control-hidden
+.utility-hidden
     display: none

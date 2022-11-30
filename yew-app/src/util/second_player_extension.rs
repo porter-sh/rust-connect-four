@@ -93,6 +93,8 @@ impl SecondPlayerExtension {
 
     /// Hands off control to the second player. The board should then wait for
     /// a rerender message with the second player's move.
+    /// Returns Result of whether the second player extension will eventually
+    /// call back with a move.
     /// Should always be non-blocking.
     pub fn request_move(&self, selected_col: u8, board_state: &BoardState) -> Result<bool, String> {
         match &self.mode {
