@@ -3,11 +3,7 @@
 //! for user input outside of the game, like "Quit Game" and "Undo".
 //! All of the buttons are created in this file, to make it easy to have
 //! them all within the same <div> element.
-use crate::{
-    router::Route,
-    util::{board_state::BoardState, util::DiskColor},
-};
-use constants::ConnectionProtocol;
+use crate::{router::Route, util::board_state::BoardState};
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, Properties};
 use yew_router::prelude::*;
@@ -93,34 +89,7 @@ impl GameControlButtons {
         rerender_board_callback: Callback<()>,
     ) -> Callback<MouseEvent> {
         Callback::from(move |_| {
-            // Limit the scope of BoardState mutable borrow so other components can check the BoardState when they rerender
-            {
-                let mut disks = board.borrow_mut();
-                if disks.num_moves == 0 {
-                    return;
-                } // At the start of the game
-
-                if !disks.second_player_extension.is_online_player() {
-                    // Revert to previous player
-                    disks.current_player = if disks.current_player == DiskColor::P1 {
-                        DiskColor::P2
-                    } else {
-                        DiskColor::P1
-                    };
-                }
-
-                disks.can_move = true; // Undoes win, allowing board interaction
-                disks.num_moves -= 1;
-
-                let num_moves = disks.num_moves;
-
-                let col = disks.game_history[num_moves as usize]; // Get the column the last move was made in
-                disks.disks.rm_disk_from_col(col); // Remove the disk from the columns
-
-                disks
-                    .handoff_to_second_player(ConnectionProtocol::UNDO)
-                    .unwrap_or_default();
-            } // Mutable borrow of the BoardState dropped, so other components can check the BoardState when they rerender
+            board.borrow_mut().undo_move_and_handoff_to_second_player();
 
             // Tell the Board to rerender
             rerender_board_callback.emit(());

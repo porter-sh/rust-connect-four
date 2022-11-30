@@ -19,6 +19,9 @@ use gloo::console::log;
 pub struct BoardState {
     pub disks: Disks,
     pub can_move: bool,
+    // NOTE: although disks maintains an "is_p1_turn" field, that is used
+    // for rendering the board, and "current_player" is used for game logic. The
+    // two are not always the same.
     pub current_player: DiskColor,
     pub game_history: [u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize],
     pub num_moves: u8,
@@ -71,8 +74,18 @@ impl BoardState {
         selected_col: u8,
     ) -> Result<(), String> {
         self.make_move(selected_col)?;
-        // Handoff to second player
-        self.handoff_to_second_player(selected_col)
+        if !self.can_move && self.second_player_extension.is_survival_mode() {
+            self.second_player_extension
+                .increment_survival_mode_difficulty();
+            self.disks = Disks::default();
+            self.game_history = [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
+            self.num_moves = 0;
+            self.can_move = true;
+            Ok(())
+        } else {
+            // Handoff to second player
+            self.handoff_to_second_player(selected_col)
+        }
     }
 
     pub fn handoff_to_second_player(&mut self, selected_col: u8) -> Result<(), String> {
@@ -113,7 +126,9 @@ impl BoardState {
 
                 if msg < 7 {
                     self.make_move(msg).unwrap();
-                    self.can_move = true;
+                    if !self.disks.check_last_drop_won() {
+                        self.can_move = true;
+                    }
                 }
             }
 
@@ -121,22 +136,47 @@ impl BoardState {
         }
     }
 
-    // Resets the board, and requests a server connection.
+    /// Resets the board, and requests a server connection.
     pub fn init_online(&mut self, lobby: String) {
         self.reset(); // reset board data
         self.second_player_extension.init_online(lobby); // set the second player to be online
     }
 
-    // Resets the board, and extends with an AI as the second player.
+    /// Resets the board, and extends with an AI as the second player.
     pub fn init_ai(&mut self, ai_type: SecondPlayerAIMode) {
         self.reset(); // reset board data
         self.second_player_extension.init_ai(ai_type); // set the second player to be an AI
     }
 
-    // Resets the board, and extends to survival mode (second player is AI that improves each round).
+    /// Resets the board, and extends to survival mode (second player is AI that improves each round).
     pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
         self.reset(); // reset board data
         self.second_player_extension.init_survival(ai_type); // set the second player to be an AI
+    }
+
+    /// Undo the last move and sends a message to the second player.
+    pub fn undo_move_and_handoff_to_second_player(&mut self) {
+        // At the start of the game
+        if self.num_moves == 0 {
+            return;
+        }
+
+        if !self.second_player_extension.is_online_player() {
+            // Revert to previous player
+            self.current_player = if self.current_player == DiskColor::P1 {
+                DiskColor::P2
+            } else {
+                DiskColor::P1
+            };
+        }
+
+        self.can_move = true; // Undoes win, allowing board interaction
+        self.num_moves -= 1;
+
+        let num_moves = self.num_moves;
+
+        let col = self.game_history[num_moves as usize]; // Get the column the last move was made in
+        self.disks.rm_disk_from_col(col); // Remove the disk from the columns
     }
 
     /// If not online, set the current player to the next player.

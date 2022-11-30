@@ -25,7 +25,7 @@ impl PositionLookupTable {
         self.table.get(&position.get_key()).copied()
     }
 
-    pub fn get_num_entries(&self) -> usize {
-        self.table.len()
-    }
+    // pub fn get_num_entries(&self) -> usize {
+    //     self.table.len()
+    // }
 }

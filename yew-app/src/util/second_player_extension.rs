@@ -60,7 +60,6 @@ impl SecondPlayerExtension {
     }
 
     /// Discards previous extension, and establishes a connection to the server.
-    /// TODO: encapsulate server communication in a separate module
     pub fn init_online(&mut self, lobby: String) {
         self.mode = match net::spawn_connection_tasks(self.rerender_board_callback.clone(), lobby) {
             Ok((sender, send_update_as_col_num)) => OnlinePlayer {
@@ -87,7 +86,7 @@ impl SecondPlayerExtension {
     pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
         self.mode = SurvivalMode(match ai_type {
             SecondPlayerSurvivalAIMode::Perfect => {
-                Box::new(PerfectAI::new(10, self.rerender_board_callback.clone()))
+                Box::new(PerfectAI::new(1, self.rerender_board_callback.clone()))
             }
         });
     }
@@ -117,14 +116,6 @@ impl SecondPlayerExtension {
             None => return Ok(false),
         }
         Ok(true)
-    }
-
-    pub fn get_mode(&self) -> &SecondPlayerExtensionMode {
-        &self.mode
-    }
-
-    pub fn get_mode_mut(&mut self) -> &mut SecondPlayerExtensionMode {
-        &mut self.mode
     }
 
     pub fn undo_enabled_for_online(&self) -> bool {
@@ -161,6 +152,11 @@ impl SecondPlayerExtension {
         match &self.mode {
             SecondPlayerExtensionMode::None => true,
             _ => false,
+        }
+    }
+    pub fn increment_survival_mode_difficulty(&mut self) {
+        if let SurvivalMode(ai) = &mut self.mode {
+            ai.increment_difficulty();
         }
     }
 

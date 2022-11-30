@@ -2,14 +2,17 @@
 //! At a high level, this AI finds the best move(s) by looking at all possible moves
 //! until the end of the game (or however far we set), then picks the move that will
 //! guarantee the soonest win.
-use constants::{BOARD_HEIGHT, BOARD_WIDTH, LOOKUP_TABLE_SIZE};
+use constants::*;
 
 use super::{
     ai::{SurvivalAI, AI},
     position_lookup_table::PositionLookupTable,
-    util,
+    util::{self, AI_INCREMENT_MESSAGE},
 };
-use crate::util::{net::ServerMessage, util::Disks};
+use crate::{
+    ai::util::PERFECT_SURVIVAL_DIFFICULTY_INCREMENT,
+    util::{net::ServerMessage, util::Disks},
+};
 use gloo::console::log;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use wasm_bindgen_futures::spawn_local;
@@ -43,14 +46,21 @@ impl PerfectAI {
             while let Some(msg) = receiver.recv().await {
                 match msg {
                     ServerMessage::Disks(disks) => {
-                        rerender_board_callback.emit(SimpleMessage(ai.get_move(&disks)));
+                        let ai_move = ai.get_move(&disks).await;
+                        // Make sure updated input has not been sent to this receiver
+                        // if let Err(_) = receiver.try_recv() { // TODO: comment back in if/when AI properly runs in the background
+                        rerender_board_callback.emit(SimpleMessage(ai_move));
+                        // }
                     }
                     ServerMessage::SimpleMessage(inc) => {
-                        ai.max_moves_look_ahead += inc;
-                        log!(format!(
-                            "Difficulty increased to {}",
-                            ai.max_moves_look_ahead
-                        ));
+                        if inc == AI_INCREMENT_MESSAGE {
+                            ai.max_moves_look_ahead += PERFECT_SURVIVAL_DIFFICULTY_INCREMENT;
+                            ai.position_lookup_table = PositionLookupTable::new(LOOKUP_TABLE_SIZE);
+                            log!(format!(
+                                "Difficulty increased to {}",
+                                ai.max_moves_look_ahead
+                            ));
+                        }
                     }
                     _ => panic!("Received message the AI thread cannot handle."),
                 }
@@ -73,7 +83,7 @@ impl SurvivalAI for PerfectAI {
     /// Used for survival mode, to make the AI harder each round.
     fn increment_difficulty(&mut self) {
         self.request_sender
-            .send(SimpleMessage(4))
+            .send(SimpleMessage(AI_INCREMENT_MESSAGE))
             .unwrap_or_default();
     }
 }
@@ -200,8 +210,26 @@ impl PerfectAIHelper {
         min_self_score
     }
 
+    async fn get_score_async(
+        &mut self,
+        board: &Disks,
+        num_moves_into_game: u8,
+        num_moves_look_ahead: u8,
+        min_self_score: i8,
+        min_opponent_score: i8,
+    ) -> i8 {
+        // log!("Get Score Async.");
+        self.get_score(
+            board,
+            num_moves_into_game,
+            num_moves_look_ahead,
+            min_self_score,
+            min_opponent_score,
+        )
+    }
+
     /// Returns which column the AI would drop a disk into.
-    fn get_move(&mut self, board: &Disks) -> u8 {
+    async fn get_move(&mut self, board: &Disks) -> u8 {
         // start each column with a bad score
         let mut score = [-100; BOARD_WIDTH as usize];
         let num_moves_into_game = board.get_num_disks();
@@ -214,13 +242,15 @@ impl PerfectAIHelper {
                         (BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8;
                 } else {
                     // otherwise, calculate the score of the board state after the move
-                    score[col as usize] = -self.get_score(
-                        &board,
-                        num_moves_into_game + 1,
-                        self.max_moves_look_ahead,
-                        -100,
-                        100,
-                    );
+                    score[col as usize] = -self
+                        .get_score_async(
+                            &board,
+                            num_moves_into_game + 1,
+                            self.max_moves_look_ahead,
+                            -100,
+                            100,
+                        )
+                        .await;
                 }
             }
         }
