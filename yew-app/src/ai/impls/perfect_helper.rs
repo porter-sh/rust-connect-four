@@ -1,13 +1,19 @@
-//! Contains the PerfectAIHelper implementation, used by the PerfectAI.
+//! Contains the PerfectAIHelper struct, used by the PerfectAI to perform computations on a separate task.
 //! At a high level, this AI finds the best move(s) by looking at all possible
 //! moves until the end of the game (or however far we set), then picks the move
-//! that will guarantee the soonest win.
+//! that will guarantee the soonest win, or avoids a loss for as long as possible.
 
 use crate::{
-    ai::{perfect_helper::PerfectAIHelper, position_lookup_table::PositionLookupTable, util},
+    ai::{impls::position_lookup_table::PositionLookupTable, util},
     util::disks::Disks,
 };
 use constants::*;
+
+pub struct PerfectAIHelper {
+    pub max_moves_look_ahead: u8,
+    // Stores a hashmap of recent calculated board states, to avoid recalculating
+    pub position_lookup_table: PositionLookupTable,
+}
 
 impl PerfectAIHelper {
     const COLUMN_ORDER: [u8; BOARD_WIDTH as usize] = [3, 2, 4, 1, 5, 0, 6];

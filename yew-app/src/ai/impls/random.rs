@@ -1,11 +1,13 @@
-//! Contains the RandomAI implementation.
+//! Contains the RandomAI struct.
 //! RandomAI randomly chooses any open column.
 
 use crate::{
-    ai::{ai::AI, random::RandomAI, util},
+    ai::{ai::AI, util},
     util::disks::Disks,
 };
 use constants::BOARD_WIDTH;
+
+pub struct RandomAI;
 
 impl AI for RandomAI {
     /// Gets a random move from the available columns.

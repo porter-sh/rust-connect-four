@@ -1,13 +1,14 @@
-//! Contains the PerfectAI implementation.
+//! Contains the PerfectAI struct.
 //! This AI uses futures to asynchronously find the best move using the
-//! PerfectAIHelper.
+//! PerfectAIHelper, which looks ahead several moves into the future.
 
-use super::super::{
-    ai::{SurvivalAI, AI},
-    perfect::PerfectAI,
+use super::{
+    super::{
+        ai::{SurvivalAI, AI},
+        util::AI_INCREMENT_MESSAGE,
+    },
     perfect_helper::PerfectAIHelper,
     position_lookup_table::PositionLookupTable,
-    util::AI_INCREMENT_MESSAGE,
 };
 use crate::{
     ai::util::PERFECT_SURVIVAL_DIFFICULTY_INCREMENT,
@@ -15,11 +16,15 @@ use crate::{
 };
 use constants::*;
 use gloo::console::log;
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio::sync::mpsc::{self, UnboundedSender, UnboundedReceiver};
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
 
 use GameUpdateMessage::SimpleMessage;
+
+pub struct PerfectAI {
+    pub request_sender: UnboundedSender<GameUpdateMessage>,
+}
 
 impl PerfectAI {
     pub fn new(

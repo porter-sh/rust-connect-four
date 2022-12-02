@@ -3,7 +3,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use yew::Callback;
 
 use crate::{
-    ai::{perfect::PerfectAI, random::RandomAI},
+    ai::impls::{perfect::PerfectAI, random::RandomAI},
     util::{
         board_state::RequestMoveResult,
         net,
