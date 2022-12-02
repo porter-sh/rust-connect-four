@@ -7,7 +7,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum to store the state at a particular board space
 /// Either Empty or the corresponding player who has a disk in that spot
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DiskColor {
     Empty,
     P1,

@@ -30,6 +30,13 @@ impl Default for RequestMoveResult {
     }
 }
 
+#[derive(PartialEq)]
+enum UpdateInfoMessageVariant {
+    GameWon,
+    Undo,
+    None,
+}
+
 /// BoardState stores the internal board representation, as well as other state data that other
 /// board components use
 ///
@@ -80,13 +87,11 @@ impl BoardState {
         let game_won = self.update_can_move_if_won();
         self.update_player_if_not_online();
         self.update_game_history(col);
-        // TODO FIX THIS LOGIC
-        log!(format!(
-            "game_won: {}, num_moves {}",
-            game_won, self.num_moves
-        ));
-        self.update_info_message(game_won);
-        log!(format!("Info message: {:?}", self.info_message));
+        self.update_info_message(if game_won {
+            UpdateInfoMessageVariant::GameWon
+        } else {
+            UpdateInfoMessageVariant::None
+        });
         Ok(())
     }
 
@@ -138,10 +143,9 @@ impl BoardState {
         self.can_move = true; // Undoes win, allowing board interaction
         self.num_moves -= 1;
 
-        let num_moves = self.num_moves;
-
-        let col = self.game_history[num_moves as usize]; // Get the column the last move was made in
+        let col = self.game_history[self.num_moves as usize]; // Get the column the last move was made in
         self.disks.rm_disk_from_col(col); // Remove the disk from the columns
+        self.update_info_message(UpdateInfoMessageVariant::Undo);
         self.handoff_to_second_player(ConnectionProtocol::UNDO)
             .unwrap_or_default();
     }
@@ -291,26 +295,35 @@ impl BoardState {
         }
     }
 
-    fn update_info_message(&mut self, game_won: bool) {
-        self.info_message = if if self.second_player_extension.is_online_player() {
-            self.current_player == DiskColor::P2
+    fn update_info_message(&mut self, variant: UpdateInfoMessageVariant) {
+        // log!(format!(
+        //     "Updating info message... current_player: {:?}, num_moves {}, game_won: {}",
+        //     self.current_player, self.num_moves, game_won
+        // ));
+        let p1_next = if self.second_player_extension.is_online_player() {
+            self.current_player
+                == if variant == UpdateInfoMessageVariant::Undo {
+                    DiskColor::P1
+                } else {
+                    DiskColor::P2
+                }
         } else {
             self.num_moves % 2 == 0
-        } {
-            // P1 next
-            if game_won {
+        };
+        self.info_message = if p1_next {
+            if variant == UpdateInfoMessageVariant::GameWon {
                 InfoMessage::P2Win
             } else {
                 InfoMessage::P1Turn
             }
         } else {
-            // P2 next
-            if game_won {
+            if variant == UpdateInfoMessageVariant::GameWon {
                 InfoMessage::P1Win
             } else {
                 InfoMessage::P2Turn
             }
         };
+        log!(format!("New info message: {:?}", self.info_message));
     }
 
     /// Check if the game has been won, and if so, set can_move to false.
