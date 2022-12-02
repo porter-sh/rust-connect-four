@@ -1,6 +1,4 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
-use core::num;
-
 use crate::{
     components::utility_bar::InfoMessage,
     util::{
@@ -138,6 +136,12 @@ impl BoardState {
             } else {
                 DiskColor::P1
             };
+            self.second_player_extension
+                .switch_ai_color_if_ai_or_survival(if self.num_moves % 2 == 0 {
+                    DiskColor::P2
+                } else {
+                    DiskColor::P1
+                });
         }
 
         self.can_move = true; // Undoes win, allowing board interaction
@@ -245,15 +249,6 @@ impl BoardState {
         self.reset(); // reset board data
         self.info_message = InfoMessage::Connecting;
         self.second_player_extension.init_online(lobby); // set the second player to be online
-        log!(format!(
-            "Extension Mode: {}",
-            match &self.second_player_extension.mode {
-                SecondPlayerExtensionMode::OnlinePlayer { .. } => "online",
-                SecondPlayerExtensionMode::AI(_) => "AI",
-                SecondPlayerExtensionMode::SurvivalMode(_) => "survival",
-                SecondPlayerExtensionMode::None => "none",
-            }
-        ));
         if self.second_player_extension.mode == SecondPlayerExtensionMode::None {
             self.info_message = InfoMessage::ConnectionFailed;
         }
@@ -278,11 +273,7 @@ impl BoardState {
     /// If not online, set the current player to the next player.
     fn update_player_if_not_online(&mut self) {
         if !self.second_player_extension.is_online_player() {
-            self.current_player = match self.current_player {
-                DiskColor::P1 => DiskColor::P2,
-                DiskColor::P2 => DiskColor::P1,
-                _ => panic!("Invalid player color"),
-            };
+            self.current_player = self.current_player.opposite();
         }
     }
 
@@ -296,10 +287,6 @@ impl BoardState {
     }
 
     fn update_info_message(&mut self, variant: UpdateInfoMessageVariant) {
-        // log!(format!(
-        //     "Updating info message... current_player: {:?}, num_moves {}, game_won: {}",
-        //     self.current_player, self.num_moves, game_won
-        // ));
         let p1_next = if self.second_player_extension.is_online_player() {
             self.current_player
                 == if variant == UpdateInfoMessageVariant::Undo {
@@ -323,7 +310,6 @@ impl BoardState {
                 InfoMessage::P2Turn
             }
         };
-        log!(format!("New info message: {:?}", self.info_message));
     }
 
     /// Check if the game has been won, and if so, set can_move to false.

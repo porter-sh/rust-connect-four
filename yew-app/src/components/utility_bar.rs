@@ -75,9 +75,12 @@ impl Component for UtilityBar {
 
                             {match route {
                                 Route::LocalMultiplayer | Route::VersusBot => html! {
-                                    <button class="utility-btn" onclick={self.undo_callback.clone()}>
-                                        { "Undo" }
-                                    </button> },
+                                    if ctx.props().board.borrow().num_moves != 0 {
+                                        <button class="utility-btn" onclick={self.undo_callback.clone()}>
+                                            { "Undo" }
+                                        </button>
+                                    }
+                                },
                                 Route::OnlineMultiplayer => {
                                     let disks = ctx.props().board.borrow();
                                     if (!disks.can_move != (disks.disks.check_last_drop_won() && disks.disks.get_is_p1_turn() == (disks.current_player == DiskColor::P1)))
@@ -141,7 +144,13 @@ impl UtilityBar {
                         DiskColor::P2 => "Opponent's turn.",
                         DiskColor::Empty => "Red's turn.",
                     },
-                    AI(_) | SurvivalMode(_) => "Your turn.",
+                    AI { ai_color, .. } | SurvivalMode { ai: _, ai_color } => {
+                        if ai_color == &DiskColor::P2 {
+                            "Your turn."
+                        } else {
+                            "AI's turn."
+                        }
+                    }
                     None => "Red's turn.",
                 },
             ),
@@ -153,7 +162,13 @@ impl UtilityBar {
                         DiskColor::P2 => "Your turn",
                         DiskColor::Empty => "Yellow's turn.",
                     },
-                    AI(_) | SurvivalMode(_) => "AI's turn.",
+                    AI { ai_color, .. } | SurvivalMode { ai: _, ai_color } => {
+                        if ai_color == &DiskColor::P2 {
+                            "AI's turn."
+                        } else {
+                            "Your turn."
+                        }
+                    }
                     None => "Yellow's turn.",
                 },
             ),
@@ -165,7 +180,13 @@ impl UtilityBar {
                         DiskColor::P2 => "You lose.",
                         DiskColor::Empty => "Red wins.",
                     },
-                    AI(_) | SurvivalMode(_) => "You win!",
+                    AI { ai_color, .. } | SurvivalMode { ai: _, ai_color } => {
+                        if ai_color == &DiskColor::P2 {
+                            "You win!"
+                        } else {
+                            "AI wins."
+                        }
+                    }
                     None => "Red wins!",
                 },
             ),
@@ -177,7 +198,13 @@ impl UtilityBar {
                         DiskColor::P2 => "You win!",
                         DiskColor::Empty => "Red wins.",
                     },
-                    AI(_) | SurvivalMode(_) => "AI wins!",
+                    AI { ai_color, .. } | SurvivalMode { ai: _, ai_color } => {
+                        if ai_color == &DiskColor::P2 {
+                            "AI wins."
+                        } else {
+                            "You win!"
+                        }
+                    }
                     None => "Yellow wins!",
                 },
             ),

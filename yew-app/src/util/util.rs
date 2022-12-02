@@ -22,6 +22,14 @@ impl DiskColor {
             DiskColor::P2 => "p2",
         }
     }
+
+    pub fn opposite(&self) -> DiskColor {
+        match self {
+            DiskColor::Empty => DiskColor::Empty,
+            DiskColor::P1 => DiskColor::P2,
+            DiskColor::P2 => DiskColor::P1,
+        }
+    }
 }
 
 /// DiskData contains fields that help determine looping over the board to determine if a dropped disk wins the game
@@ -73,9 +81,15 @@ pub enum SecondPlayerExtensionMode {
         sender: UnboundedSender<GameUpdateMessage>,
         send_update_as_col_num: Rc<RefCell<bool>>,
     }, // vs another person over the internet
-    AI(Box<dyn ai::AI>),                   // singleplayer vs bot
-    SurvivalMode(Box<dyn ai::SurvivalAI>), // AI mode, but gets progressively harder
-    None,                                  // local multiplayer
+    AI {
+        ai: Box<dyn ai::AI>,
+        ai_color: DiskColor,
+    }, // singleplayer vs bot
+    SurvivalMode {
+        ai: Box<dyn ai::SurvivalAI>,
+        ai_color: DiskColor,
+    }, // AI mode, but gets progressively harder
+    None, // local multiplayer
 }
 
 use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
@@ -83,8 +97,8 @@ impl PartialEq for SecondPlayerExtensionMode {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (OnlinePlayer { .. }, OnlinePlayer { .. }) => true,
-            (AI(_), AI(_)) => true,
-            (SurvivalMode(_), SurvivalMode(_)) => true,
+            (AI { .. }, AI { .. }) => true,
+            (SurvivalMode { .. }, SurvivalMode { .. }) => true,
             (None, None) => true,
             _ => false,
         }

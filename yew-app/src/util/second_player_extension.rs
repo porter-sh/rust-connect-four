@@ -26,7 +26,7 @@ pub struct SecondPlayerExtension {
 
 use super::{
     board_state::BoardState,
-    util::{SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
+    util::{DiskColor, SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
 };
 
 impl SecondPlayerExtension {
@@ -54,21 +54,27 @@ impl SecondPlayerExtension {
 
     /// Discards the previous extension, and replaces it with a new AI.
     pub fn init_ai(&mut self, ai_type: SecondPlayerAIMode) {
-        self.mode = AI(match ai_type {
-            SecondPlayerAIMode::Random => Box::new(RandomAI),
-            SecondPlayerAIMode::Perfect => {
-                Box::new(PerfectAI::new(15, self.rerender_board_callback.clone()))
-            }
-        });
+        self.mode = AI {
+            ai: match ai_type {
+                SecondPlayerAIMode::Random => Box::new(RandomAI),
+                SecondPlayerAIMode::Perfect => {
+                    Box::new(PerfectAI::new(15, self.rerender_board_callback.clone()))
+                }
+            },
+            ai_color: DiskColor::P2,
+        };
     }
 
     // Discards the previous extension, and creates a new survival mode.
     pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
-        self.mode = SurvivalMode(match ai_type {
-            SecondPlayerSurvivalAIMode::Perfect => {
-                Box::new(PerfectAI::new(1, self.rerender_board_callback.clone()))
-            }
-        });
+        self.mode = SurvivalMode {
+            ai: match ai_type {
+                SecondPlayerSurvivalAIMode::Perfect => {
+                    Box::new(PerfectAI::new(1, self.rerender_board_callback.clone()))
+                }
+            },
+            ai_color: DiskColor::P2,
+        };
     }
 
     /// Hands off control to the second player. The board should then wait for
@@ -93,7 +99,7 @@ impl SecondPlayerExtension {
                     selected_col,
                 )?;
             }
-            AI(ai) => {
+            AI { ai, .. } => {
                 if selected_col != ConnectionProtocol::UNDO && board_state.can_move {
                     let res = ai.request_move(&board_state.disks);
                     return Ok(if res < BOARD_WIDTH {
@@ -103,7 +109,7 @@ impl SecondPlayerExtension {
                     });
                 }
             }
-            SurvivalMode(ai) => {
+            SurvivalMode { ai, .. } => {
                 if selected_col != ConnectionProtocol::UNDO && board_state.can_move {
                     let res = ai.request_move(&board_state.disks);
                     return Ok(if res < BOARD_WIDTH {
@@ -138,13 +144,13 @@ impl SecondPlayerExtension {
     }
     pub fn is_ai(&self) -> bool {
         match &self.mode {
-            AI(_) => true,
+            AI { .. } => true,
             _ => false,
         }
     }
     pub fn is_survival_mode(&self) -> bool {
         match &self.mode {
-            SurvivalMode(_) => true,
+            SurvivalMode { .. } => true,
             _ => false,
         }
     }
@@ -155,8 +161,19 @@ impl SecondPlayerExtension {
         }
     }
     pub fn increment_survival_mode_difficulty(&mut self) {
-        if let SurvivalMode(ai) = &mut self.mode {
+        if let SurvivalMode { ai, .. } = &mut self.mode {
             ai.increment_difficulty();
+        }
+    }
+    pub fn switch_ai_color_if_ai_or_survival(&mut self, undo_color: DiskColor) {
+        if let AI { ai_color, .. } = &mut self.mode {
+            if *ai_color == undo_color {
+                *ai_color = ai_color.opposite();
+            }
+        } else if let SurvivalMode { ai_color, .. } = &mut self.mode {
+            if *ai_color == undo_color {
+                *ai_color = ai_color.opposite();
+            }
         }
     }
 
