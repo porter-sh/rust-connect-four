@@ -14,9 +14,11 @@ pub fn lobby_select() -> Html {
             <div class={"menu-container"}>
                 <p class="menu-txt">{"Choose Lobby"}</p>
                 <form action={"/online-multiplayer/"}>
-                    <label for="lobby">{"Lobby Name: "}</label>
-                    <input type="text" name="lobby" id="lobby-input" />
-                    <input type="submit" value="Submit" class="menu-btn"/>
+                    <label class={"menu-txt"} style={"font-size:15px"}
+                            for="lobby">{"Lobby Name: "}</label>
+                    <input type="text" name="lobby" id="lobby-input"
+                            style={"text-align:center;"} placeholder={"(optional)"}/>
+                    <input type="submit" value="Join" class="menu-btn"/>
                 </form>
                 <GameButton<Route> text={"Back"} route={Route::Home} />
             </div>

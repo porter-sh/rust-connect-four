@@ -56,15 +56,9 @@ pub async fn handle_connection(
                     // If the lobby does not already exist
                     // Create a new lobby
                     let lobbies_ref = Arc::clone(&lobbies);
-                    let new_client_sender = lobby::create_lobby(
-                        if lobby_name == "".to_string() {
-                            None
-                        } else {
-                            Some(Box::new(move || {
-                                lobbies_ref.lock().unwrap().remove(&lobby_name);
-                            }))
-                        }
-                    );
+                    let new_client_sender = lobby::create_lobby(Box::new(move || {
+                        lobbies_ref.lock().unwrap().remove(&lobby_name);
+                    }));
                     lobbies_map.insert(lobby, new_client_sender.clone());
                     // Send the player to the new lobby
                     new_client_sender.send(client).unwrap_or_default();

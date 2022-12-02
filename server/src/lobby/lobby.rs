@@ -33,7 +33,7 @@ async fn run_lobby(
     mut receiver: UnboundedReceiver<Message>,
     game_update_sender: BroadcastSender<MessageFromClient>,
     subtasks: Arc<Mutex<Subtasks>>,
-    remove_lobby: Option<Box<dyn FnOnce() -> () + Send + Sync>>
+    remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>,
 ) {
     #[cfg(feature = "cppintegration")]
     let mut board = Board::default();
@@ -46,6 +46,10 @@ async fn run_lobby(
         let msg_byte = msg.binary[0];
         if msg_byte == ConnectionProtocol::KILL_CONNECTION {
             break;
+        }
+        if msg_byte == ConnectionProtocol::SECOND_PLAYER_CONNECTED {
+            game_update_sender.send(msg).unwrap_or_default();
+            continue;
         }
         if is_p1_turn == (msg.player_num == 1) {
             if let Ok(game_won) = board.make_move(msg.player_num, msg_byte) {
@@ -64,6 +68,10 @@ async fn run_lobby(
         match msg {
             // If a message was received from the player whose turn it was, store the updated game state and send it to all clients
             BoardState(state) => {
+                if state.binary.len() == 1 {
+                    game_update_sender.send(state).unwrap_or_default();
+                    continue;
+                }
                 let expected_to_be_p1 = if ConnectionProtocol::is_undo_move(&state.binary) {
                     !is_p1_turn
                 } else {
@@ -87,9 +95,7 @@ async fn run_lobby(
     // Delete this lobby and kill all tasks listening to players
     // All writer tasks will end once the senders to them are dropped
     task::block_in_place(move || {
-        if let Some(remove_lobby_callback) = remove_lobby {
-            remove_lobby_callback();
-        }
+        remove_lobby();
 
         for subtask in &subtasks.lock().unwrap().tasks {
             subtask.abort();
@@ -100,8 +106,9 @@ async fn run_lobby(
 
 /// create_lobby starts the run_lobby and new_client_handler tasks for the given lobby
 /// Returns a sender which can send new clients to the lobby
-pub fn create_lobby(remove_lobby: Option<Box<dyn FnOnce() -> () + Send + Sync>>) -> UnboundedSender<Client> {
-
+pub fn create_lobby(
+    remove_lobby: Box<dyn FnOnce() -> () + Send + Sync>,
+) -> UnboundedSender<Client> {
     let (sender, receiver) = mpsc::unbounded_channel();
     let (new_client_sender, new_client_receiver) = mpsc::unbounded_channel();
 

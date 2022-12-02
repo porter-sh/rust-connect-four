@@ -11,16 +11,16 @@ use super::{
 };
 use crate::{
     ai::util::PERFECT_SURVIVAL_DIFFICULTY_INCREMENT,
-    util::{net::ServerMessage, util::Disks},
+    util::{disks::Disks, util::GameUpdateMessage},
 };
 use gloo::console::log;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
-use ServerMessage::SimpleMessage;
+use GameUpdateMessage::SimpleMessage;
 
 pub struct PerfectAI {
-    request_sender: UnboundedSender<ServerMessage>,
+    request_sender: UnboundedSender<GameUpdateMessage>,
 }
 
 struct PerfectAIHelper {
@@ -30,29 +30,32 @@ struct PerfectAIHelper {
 }
 
 impl PerfectAI {
-    pub fn new(max_moves_look_ahead: u8, rerender_board_callback: Callback<ServerMessage>) -> Self {
+    pub fn new(
+        max_moves_look_ahead: u8,
+        rerender_board_callback: Callback<GameUpdateMessage>,
+    ) -> Self {
         let (request_sender, receiver) = mpsc::unbounded_channel();
         Self::spawn_computation_task(receiver, rerender_board_callback, max_moves_look_ahead);
         Self { request_sender }
     }
 
     fn spawn_computation_task(
-        mut receiver: UnboundedReceiver<ServerMessage>,
-        rerender_board_callback: Callback<ServerMessage>,
+        mut receiver: UnboundedReceiver<GameUpdateMessage>,
+        rerender_board_callback: Callback<GameUpdateMessage>,
         max_moves_look_ahead: u8,
     ) {
         spawn_local(async move {
             let mut ai = PerfectAIHelper::new(max_moves_look_ahead);
             while let Some(msg) = receiver.recv().await {
                 match msg {
-                    ServerMessage::Disks(disks) => {
+                    GameUpdateMessage::Disks(disks) => {
                         let ai_move = ai.get_move(&disks).await;
                         // Make sure updated input has not been sent to this receiver
                         // if let Err(_) = receiver.try_recv() { // TODO: comment back in if/when AI properly runs in the background
                         rerender_board_callback.emit(SimpleMessage(ai_move));
                         // }
                     }
-                    ServerMessage::SimpleMessage(inc) => {
+                    GameUpdateMessage::SimpleMessage(inc) => {
                         if inc == AI_INCREMENT_MESSAGE {
                             ai.max_moves_look_ahead += PERFECT_SURVIVAL_DIFFICULTY_INCREMENT;
                             ai.position_lookup_table = PositionLookupTable::new(LOOKUP_TABLE_SIZE);
@@ -70,10 +73,11 @@ impl PerfectAI {
 }
 
 impl AI for PerfectAI {
-    fn request_move(&self, disks: &Disks) {
+    fn request_move(&self, disks: &Disks) -> u8 {
         self.request_sender
-            .send(ServerMessage::Disks(disks.clone()))
+            .send(GameUpdateMessage::Disks(disks.clone()))
             .unwrap_or_default();
+        BOARD_WIDTH
     }
 }
 

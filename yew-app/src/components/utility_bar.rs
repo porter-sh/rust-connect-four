@@ -1,19 +1,38 @@
-//! Contains definition of GameControlButtons.
-//! GameControlButtons are the buttons underneath the game board that allow
+//! Contains definition of UtilityBar.
+//! UtilityBar are the buttons underneath the game board that allow
 //! for user input outside of the game, like "Quit Game" and "Undo".
 //! All of the buttons are created in this file, to make it easy to have
 //! them all within the same <div> element.
+use super::board::BoardMessages;
 use crate::{
     router::Route,
-    util::{board_state::BoardState, util::DiskColor},
+    util::{
+        board_state::BoardState,
+        util::{DiskColor, SecondPlayerExtensionMode},
+    },
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Ref, RefCell},
+    rc::Rc,
+};
 use yew::{classes, html, Callback, Component, Context, Html, MouseEvent, Properties};
 use yew_router::prelude::*;
+use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
 
-use gloo::console::{error, log};
+use gloo::console::error;
 
-use super::board::BoardMessages;
+#[derive(PartialEq)]
+pub enum InfoMessage {
+    P1Turn,
+    P2Turn,
+    P1Win,
+    P2Win,
+    Draw,
+    WaitingForOpponent,
+    Connecting,
+    ConnectionFailed,
+    NoMessage,
+}
 
 #[derive(Properties, PartialEq)]
 pub struct UtilityBarProperties {
@@ -23,7 +42,6 @@ pub struct UtilityBarProperties {
 
 pub struct UtilityBar {
     undo_callback: Callback<MouseEvent>,
-    info_string: String,
 }
 
 impl Component for UtilityBar {
@@ -36,7 +54,6 @@ impl Component for UtilityBar {
                 Rc::clone(&ctx.props().board),
                 ctx.props().rerender_board_callback.clone(),
             ),
-            info_string: "TODO delete".to_string(),
         }
     }
 
@@ -63,7 +80,7 @@ impl Component for UtilityBar {
                                     </button> },
                                 Route::OnlineMultiplayer => {
                                     let disks = ctx.props().board.borrow();
-                                    if !disks.can_move
+                                    if (!disks.can_move != (disks.disks.check_last_drop_won() && disks.disks.get_is_p1_turn() == (disks.current_player == DiskColor::P1)))
                                         && disks.second_player_extension.undo_enabled_for_online()
                                         && disks.num_moves > 0
                                     {
@@ -80,29 +97,14 @@ impl Component for UtilityBar {
                             }}
                         </span>
 
-                        <span class={classes!("utility-right", "utility-text-p1")}>
-                            {match route {
-                                Route::Home | Route::LobbySelect
-                                        | Route::AISelect | Route::NotFound
-                                        | Route::NotFoundNeedsRedirect => {""},
-                                Route::LocalMultiplayer => {
-                                    log!("LocalMultiplayer");
-                                    if ctx.props().board.borrow().current_player == DiskColor::P1 {
-                                        "Player 1's Turn."
-                                    } else { "Player 2's Turn." }
-                                },
-                                Route::VersusBot => {
-                                    if ctx.props().board.borrow().current_player == DiskColor::P1 {
-                                        "Your Turn."
-                                    } else { "Calculating..." }
-                                },
-                                Route::OnlineMultiplayer => {
-                                    if ctx.props().board.borrow().current_player == DiskColor::P1 {
-                                        "Your Turn."
-                                    } else { "Opponent's Turn." }
-                                },
-                            }}
-                        </span>
+                        {{
+                            let (color_class, message) = Self::get_color_and_message_str(ctx.props().board.borrow());
+                            html! {
+                                <span class={classes!("utility-right", color_class)}>
+                                    { message }
+                                </span>
+                            }
+                        }}
                     </div>
                 }
             } else {
@@ -127,5 +129,63 @@ impl UtilityBar {
             // Tell the Board to rerender
             rerender_board_callback.emit(BoardMessages::Rerender);
         })
+    }
+
+    fn get_color_and_message_str(board: Ref<BoardState>) -> (&'static str, &'static str) {
+        match board.info_message {
+            InfoMessage::P1Turn => (
+                "utility-text-p1",
+                match board.get_second_player_mode() {
+                    OnlinePlayer { .. } => match board.current_player {
+                        DiskColor::P1 => "Your turn",
+                        DiskColor::P2 => "Opponent's turn.",
+                        DiskColor::Empty => "Red's turn.",
+                    },
+                    AI(_) | SurvivalMode(_) => "Your turn.",
+                    None => "Red's turn.",
+                },
+            ),
+            InfoMessage::P2Turn => (
+                "utility-text-p2",
+                match board.get_second_player_mode() {
+                    OnlinePlayer { .. } => match board.current_player {
+                        DiskColor::P1 => "Opponent's turn.",
+                        DiskColor::P2 => "Your turn",
+                        DiskColor::Empty => "Yellow's turn.",
+                    },
+                    AI(_) | SurvivalMode(_) => "AI's turn.",
+                    None => "Yellow's turn.",
+                },
+            ),
+            InfoMessage::P1Win => (
+                "utility-text-p1",
+                match board.get_second_player_mode() {
+                    OnlinePlayer { .. } => match board.current_player {
+                        DiskColor::P1 => "You win!",
+                        DiskColor::P2 => "You lose.",
+                        DiskColor::Empty => "Red wins.",
+                    },
+                    AI(_) | SurvivalMode(_) => "You win!",
+                    None => "Red wins!",
+                },
+            ),
+            InfoMessage::P2Win => (
+                "utility-text-p2",
+                match board.get_second_player_mode() {
+                    OnlinePlayer { .. } => match board.current_player {
+                        DiskColor::P1 => "You lose.",
+                        DiskColor::P2 => "You win!",
+                        DiskColor::Empty => "Red wins.",
+                    },
+                    AI(_) | SurvivalMode(_) => "AI wins!",
+                    None => "Yellow wins!",
+                },
+            ),
+            InfoMessage::Draw => ("utility-text-plain", "Draw."),
+            InfoMessage::WaitingForOpponent => ("utility-text-plain", "Waiting for opponent..."),
+            InfoMessage::Connecting => ("utility-text-plain", "Connecting..."),
+            InfoMessage::ConnectionFailed => ("utility-text-plain", "Connection failed."),
+            InfoMessage::NoMessage => ("utility-text-plain", ""),
+        }
     }
 }

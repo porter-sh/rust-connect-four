@@ -1,5 +1,5 @@
-use crate::util::util::Disks;
-use constants::{ConnectionProtocol, GameUpdate, WEBSOCKET_ADDRESS};
+use crate::util::util::GameUpdateMessage::{self, BoardState, SimpleMessage, UndoMove};
+use constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
@@ -20,17 +20,8 @@ use gloo::console::{error, log};
 
 use std::{cell::RefCell, rc::Rc};
 
-/// Enum that represents a message to be sent to the server
-#[derive(Debug)]
-pub enum ServerMessage {
-    BoardState(GameUpdate),
-    Disks(Disks),
-    SimpleMessage(u8),
-    UndoMove(GameUpdate),
-}
-
-impl From<ServerMessage> for Message {
-    fn from(msg: ServerMessage) -> Message {
+impl From<GameUpdateMessage> for Message {
+    fn from(msg: GameUpdateMessage) -> Message {
         Bytes(match msg {
             BoardState(update) => ConnectionProtocol::encode_message(update),
             SimpleMessage(msg) => vec![msg],
@@ -40,16 +31,14 @@ impl From<ServerMessage> for Message {
     }
 }
 
-use ServerMessage::{BoardState, SimpleMessage, UndoMove};
-
 /// Spawns reader and writer tasks to communicate with the server
 /// On success, returns:
 ///     an UnboundedSender to sent messages to the writer thread, which will then write to the server
-///     a mutable boolean reference to store if ServerMessage should be the selected column or the entire board, as determined by the server
+///     a mutable boolean reference to store if GameUpdateMessage should be the selected column or the entire board, as determined by the server
 pub fn spawn_connection_tasks(
-    callback: Callback<ServerMessage>,
+    callback: Callback<GameUpdateMessage>,
     lobby: String,
-) -> Result<(UnboundedSender<ServerMessage>, Rc<RefCell<bool>>), JsError> {
+) -> Result<(UnboundedSender<GameUpdateMessage>, Rc<RefCell<bool>>), JsError> {
     // Task communication with server
     let websocket = WebSocket::open(WEBSOCKET_ADDRESS)?;
     let (writer, reader) = websocket.split();
@@ -74,7 +63,7 @@ pub fn spawn_connection_tasks(
 /// Task to read data sent from the server
 fn spawn_reader_task(
     mut reader: SplitStream<WebSocket>,
-    callback: Callback<ServerMessage>,
+    callback: Callback<GameUpdateMessage>,
     connection_est_sender: OneshotSender<()>,
     send_update_as_col_num: Rc<RefCell<bool>>,
 ) {
@@ -110,13 +99,14 @@ fn spawn_reader_task(
             }
         }
         log!("Exiting reader thread.");
+        callback.emit(SimpleMessage(ConnectionProtocol::CONNECTION_FAILURE));
     });
 }
 
 /// Task to write data to the server
 fn spawn_writer_task(
     mut writer: SplitSink<WebSocket, Message>,
-    mut receiver: UnboundedReceiver<ServerMessage>,
+    mut receiver: UnboundedReceiver<GameUpdateMessage>,
     connection_est_receiver: OneshotReceiver<()>,
     lobby: String,
 ) {

@@ -65,17 +65,35 @@ pub async fn new_client_handler(
                     .send(Binary(vec![client_type]))
                     .await
                     .unwrap_or_default();
-                // Send the current board state to the client
-                writer
-                    .send(Binary(last_board_state))
-                    .await
-                    .unwrap_or_default();
+                if subtasks_len != 0 {
+                    // Send the current board state to the client
+                    writer
+                        .send(Binary(last_board_state))
+                        .await
+                        .unwrap_or_default();
+                }
                 // Write to the client on game update
                 client_writer(writer, game_update_receiver, player_num).await;
             });
 
             // Spawn the appropriate listener and store its handle (so it can be ended when clients leave / the game ends)
             if subtasks_len < 2 {
+                if subtasks_len == 1 {
+                    #[cfg(feature = "cppintegration")]
+                    sender
+                        .send(Message {
+                            binary: vec![ConnectionProtocol::SECOND_PLAYER_CONNECTED],
+                            player_num: 2,
+                        })
+                        .unwrap();
+                    #[cfg(not(feature = "cppintegration"))]
+                    sender
+                        .send(BoardState(MessageFromClient {
+                            binary: vec![ConnectionProtocol::SECOND_PLAYER_CONNECTED],
+                            player_num: 2,
+                        }))
+                        .unwrap();
+                }
                 let sender = sender.clone();
                 subtasks.tasks.push(task::spawn(async move {
                     player_listener(reader, sender, player_num).await;
@@ -104,7 +122,7 @@ async fn player_listener(
         if let Binary(binary) = msg {
             // Forward the message to the main lobby task
             #[cfg(feature = "cppintegration")]
-            if binary.len() == 1 {
+            if binary.len() == 1 && binary[0] != ConnectionProtocol::SECOND_PLAYER_CONNECTED {
                 sender
                     .send(MessageFromClient { binary, player_num })
                     .unwrap();

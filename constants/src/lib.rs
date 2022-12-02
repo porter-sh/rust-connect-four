@@ -20,10 +20,12 @@ pub struct GameUpdate {
 impl ConnectionProtocol {
     pub const KILL_CONNECTION: u8 = 255;
     pub const CONNECTION_SUCCESS: u8 = 100;
+    pub const CONNECTION_FAILURE: u8 = 101;
 
     pub const IS_PLAYER_1: u8 = 254;
     pub const IS_PLAYER_2: u8 = 253;
     pub const IS_SPECTATOR: u8 = 252;
+    pub const SECOND_PLAYER_CONNECTED: u8 = 251;
 
     pub const COL_0: u8 = 0;
     pub const COL_1: u8 = 1;

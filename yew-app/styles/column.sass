@@ -1,16 +1,29 @@
 @use 'base'
 
-.btn
+%column-btn
     border-width: 0px
-    background-color: #FFF
+    background-color: #000
     opacity: 0.0
     width: base.$column-width
     height: base.$column-width * 6
     grid-row-start: 1
     grid-row-end: 7
 
-.btn:hover
-    opacity: 0.5
+.column-btn
+    @extend %column-btn
+
+.column-btn-leftmost
+    @extend %column-btn
+    border-top-left-radius: 30px
+    border-bottom-left-radius: 30px
+
+.column-btn-rightmost
+    @extend %column-btn
+    border-top-right-radius: 30px
+    border-bottom-right-radius: 30px
+
+.column-btn:hover, .column-btn-leftmost:hover, .column-btn-rightmost:hover
+    opacity: 0.12
 
 %circle-shared
     border-width: 0px

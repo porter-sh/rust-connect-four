@@ -10,8 +10,9 @@
     left: 0
 
 .menu-txt
+    font-family: base.$font-family
     font-size: 40px
-    color: #000
+    color: base.$plain-text-color
     margin-top: 0px
 
 .menu-container
@@ -41,19 +42,27 @@
 
 .utility-left
     float: left
-    padding-left: 10px
+    // padding-left: 10px
 
 .utility-right
     float: right
-    padding-right: 10px
+    // padding-right: 10px
+
+%utility-text
+    font-family: base.$font-family
+    font-size: 20px
 
 .utility-text-p1
-    font-size: 25px
+    @extend %utility-text
     color: base.$p1-disk-color
 
 .utility-text-p2
-    font-size: 25px
+    @extend %utility-text
     color: base.$p2-disk-color
+
+.utility-text-plain
+    @extend %utility-text
+    color: base.$plain-text-color
 
 %interface-btn
     background-color: base.$interface-btn-color
@@ -62,13 +71,17 @@
     transition: 0.3s
     border-radius: 20px
     padding: 5px
+    font-family: base.$font-family
+    font-size: 15px
+    font-weight: 560
 
 .menu-btn
     @extend %interface-btn
     display: block
     margin: auto
     margin-top: 20px
-    width: 150px
+    width: max-content
+    padding-inline: 15px
 
 .utility-btn
     @extend %interface-btn
@@ -77,10 +90,11 @@
     width: max-content
     padding-inline: 10px
     margin-right: 20px
+    font-size: 18px
 
 %interface-btn-hover
     background-color: base.$interface-btn-hover-color
-    box-shadow: 0px 0px 20px -2px #000
+    box-shadow: 0px 0px 15px -2px #000
 
 .menu-btn:hover
     @extend %interface-btn-hover

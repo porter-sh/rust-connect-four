@@ -6,7 +6,10 @@
 //!
 //! When not in a game or if the game is won, Column will not accept player input
 
-use crate::util::{board_state::BoardState, util::DiskColor};
+use crate::util::{
+    board_state::{BoardState, RequestMoveResult},
+    util::{DiskColor, GameUpdateMessage::SimpleMessage},
+};
 use constants::*;
 use gloo::events::EventListener;
 use std::{cell::RefCell, rc::Rc};
@@ -26,12 +29,6 @@ pub struct ColumnProperties {
     pub rerender_board_callback: Callback<BoardMessages>, // Tells the Board component to rerender
 }
 
-/// A message enum to tell the Column whether to rerender or not
-pub enum ColumnMessages {
-    Rerender,
-    NoChange,
-}
-
 /// Column component to represent a given column of the Board
 /// When clicked, drops a disk into the Column if it is not full
 /// When not in a game or if the game is won, Column will not accept player input
@@ -42,7 +39,7 @@ pub struct Column {
 
 /// Allows Column to be used as an HTML component
 impl Component for Column {
-    type Message = ColumnMessages;
+    type Message = RequestMoveResult;
     type Properties = ColumnProperties;
 
     /// Creates the Column component and creates the onclick callback
@@ -50,14 +47,11 @@ impl Component for Column {
         let col_num = ctx.props().col_num as u8;
         let onclick = {
             let board = Rc::clone(&ctx.props().disks);
-            // let rerender_board_callback = ctx.props().rerender_board_callback.clone();
             ctx.link().callback(move |_| {
                 let mut disks = board.borrow_mut();
                 disks
                     .make_move_and_handoff_to_second_player(col_num)
-                    .unwrap_or_default();
-                // rerender_board_callback.emit(BoardMessages::RerenderUtilityBar); // Todo fix this (it breaks everything)
-                return ColumnMessages::Rerender;
+                    .unwrap_or_default()
             })
         };
         Self {
@@ -69,22 +63,15 @@ impl Component for Column {
     /// Rerenders the Column if msg == Rerender
     /// If the game is won, the Board will also be rerendered, so all Columns update to not accept user input
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            ColumnMessages::Rerender => {
-                let disks = ctx.props().disks.borrow();
-                if !disks.can_move
-                    || disks.second_player_extension.is_ai()
-                    || disks.second_player_extension.is_survival_mode()
-                {
-                    // Tell the Board to rerender
-                    ctx.props()
-                        .rerender_board_callback
-                        .emit(BoardMessages::Rerender);
-                }
-                true
-            }
-            _ => false,
-        }
+        // Tell the entire Board to rerender
+        ctx.props().rerender_board_callback.emit(
+            if let RequestMoveResult::RerenderNow(col) = msg {
+                BoardMessages::RerenderAndUpdateBoard(SimpleMessage(col))
+            } else {
+                BoardMessages::Rerender
+            },
+        );
+        return false; // don't need to rerender, because the board will rerender anyways.
     }
 
     /// Renders the Column and the related disks in the Board
@@ -110,7 +97,11 @@ impl Component for Column {
                         ));
                     }
                     html!{<button
-                        class={ "btn" }
+                        class={ match ctx.props().col_num {
+                            0 => classes!("column-btn-leftmost"),
+                            6 => classes!("column-btn-rightmost"),
+                            _ => classes!("column-btn"),
+                        }}
                         style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                         onclick={ self.onclick.clone() }
                     />}

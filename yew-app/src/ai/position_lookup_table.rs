@@ -2,7 +2,7 @@
 //! positions so that it doesn't need to recalculate them every time.
 use std::collections::HashMap;
 
-use crate::util::util::Disks;
+use crate::util::disks::Disks;
 
 pub struct PositionLookupTable {
     table: HashMap<u64, i8>,

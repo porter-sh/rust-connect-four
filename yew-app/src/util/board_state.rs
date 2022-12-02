@@ -1,15 +1,32 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
 use crate::{
-    util::net::ServerMessage::{self, BoardState as BoardStateMessage, SimpleMessage},
+    components::utility_bar::InfoMessage,
     util::{
+        disks::Disks,
         second_player_extension::SecondPlayerExtension,
-        util::{DiskColor, Disks, SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
+        util::GameUpdateMessage::{self, BoardState as BoardStateMessage, SimpleMessage},
+        util::{DiskColor, SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
     },
 };
 use constants::*;
 use yew::Callback;
 
 use gloo::console::log;
+
+use super::util::SecondPlayerExtensionMode;
+
+#[derive(PartialEq)]
+pub enum RequestMoveResult {
+    WillRerenderLater,
+    RerenderNow(u8),
+    NoRequestMade,
+}
+
+impl Default for RequestMoveResult {
+    fn default() -> Self {
+        Self::NoRequestMade
+    }
+}
 
 /// BoardState stores the internal board representation, as well as other state data that other
 /// board components use
@@ -26,12 +43,13 @@ pub struct BoardState {
     pub game_history: [u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize],
     pub num_moves: u8,
     pub second_player_extension: SecondPlayerExtension,
+    pub info_message: InfoMessage,
 }
 
 /// Implements functions to check if the game has been won
 impl BoardState {
     /// Creates a new empty board, with a callback for rerendering the board.
-    pub fn new(rerender_board_callback: Callback<ServerMessage>) -> Self {
+    pub fn new(rerender_board_callback: Callback<GameUpdateMessage>) -> Self {
         BoardState {
             disks: Disks::default(),
             can_move: true,
@@ -39,6 +57,7 @@ impl BoardState {
             game_history: [0; (BOARD_WIDTH * BOARD_HEIGHT) as usize],
             num_moves: 0,
             second_player_extension: SecondPlayerExtension::new(rerender_board_callback),
+            info_message: InfoMessage::NoMessage,
         }
     }
 
@@ -50,14 +69,49 @@ impl BoardState {
         self.game_history = [0; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
         self.num_moves = 0;
         self.second_player_extension.remove_extension();
+        self.info_message = InfoMessage::P1Turn;
     }
 
     /// Does everything required for the next player to make a move in the given column.
     pub fn make_move(&mut self, col: u8) -> Result<(), String> {
+        log!("In make_move");
         self.disks.drop_disk(col)?;
-        self.update_can_move_if_won(); // must be called before dropping the disk
+        let game_won = self.update_can_move_if_won();
         self.update_player_if_not_online();
         self.update_game_history(col);
+        // TODO FIX THIS LOGIC
+        self.info_message = match self.current_player {
+            DiskColor::P1 => {
+                if self.can_move {
+                    InfoMessage::P1Turn
+                } else {
+                    InfoMessage::P2Turn
+                }
+            }
+            DiskColor::P2 => {
+                if self.can_move {
+                    InfoMessage::P2Turn
+                } else {
+                    InfoMessage::P1Win
+                }
+            }
+            // Spectating
+            DiskColor::Empty => {
+                if game_won {
+                    if self.num_moves % 2 == 0 {
+                        InfoMessage::P1Win
+                    } else {
+                        InfoMessage::P2Win
+                    }
+                } else {
+                    if self.num_moves % 2 == 0 {
+                        InfoMessage::P1Turn
+                    } else {
+                        InfoMessage::P2Turn
+                    }
+                }
+            }
+        };
         Ok(())
     }
 
@@ -74,7 +128,7 @@ impl BoardState {
     pub fn make_move_and_handoff_to_second_player(
         &mut self,
         selected_col: u8,
-    ) -> Result<bool, String> {
+    ) -> Result<RequestMoveResult, String> {
         self.make_move(selected_col)?;
         if !self.can_move && self.second_player_extension.is_survival_mode() {
             self.second_player_extension
@@ -83,80 +137,11 @@ impl BoardState {
             self.game_history = [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
             self.num_moves = 0;
             self.can_move = true;
-            Ok(false)
+            Ok(RequestMoveResult::NoRequestMade)
         } else {
             // Handoff to second player
             self.handoff_to_second_player(selected_col)
         }
-    }
-
-    /// Returns a result of wheter the second player extension will eventually
-    /// call back with a move.
-    pub fn handoff_to_second_player(&mut self, selected_col: u8) -> Result<bool, String> {
-        if self
-            .second_player_extension
-            .request_move(selected_col, self)?
-            && selected_col != ConnectionProtocol::UNDO
-        {
-            self.can_move = false;
-            return Ok(true);
-        }
-        Ok(false)
-    }
-
-    /// Handles all the board changes based on a message from the second player.
-    pub fn update_state_from_second_player_message(&mut self, msg: ServerMessage) {
-        log!(format!("Received {:?}", msg));
-        match msg {
-            BoardStateMessage(update) => {
-                // if the message is a non-winning move, it will be the client's turn next, so they can move
-                if !update.game_won && self.current_player != DiskColor::Empty {
-                    self.can_move = update.is_p1_turn == (self.current_player == DiskColor::P1);
-                }
-                // update the board
-                self.disks = Disks::from(update);
-            }
-
-            SimpleMessage(msg) => {
-                // initialization, telling the client which player they are
-                if msg == ConnectionProtocol::IS_PLAYER_1 {
-                    self.current_player = DiskColor::P1;
-                } else if msg == ConnectionProtocol::IS_PLAYER_2 {
-                    self.current_player = DiskColor::P2;
-                    self.can_move = false;
-                } else if msg == ConnectionProtocol::IS_SPECTATOR {
-                    self.current_player = DiskColor::Empty;
-                    self.can_move = false;
-                }
-
-                if msg < 7 {
-                    self.make_move(msg).unwrap();
-                    if !self.disks.check_last_drop_won() {
-                        self.can_move = true;
-                    }
-                }
-            }
-
-            _ => panic!("Received invalid update message from the task reading from the server."),
-        }
-    }
-
-    /// Resets the board, and requests a server connection.
-    pub fn init_online(&mut self, lobby: String) {
-        self.reset(); // reset board data
-        self.second_player_extension.init_online(lobby); // set the second player to be online
-    }
-
-    /// Resets the board, and extends with an AI as the second player.
-    pub fn init_ai(&mut self, ai_type: SecondPlayerAIMode) {
-        self.reset(); // reset board data
-        self.second_player_extension.init_ai(ai_type); // set the second player to be an AI
-    }
-
-    /// Resets the board, and extends to survival mode (second player is AI that improves each round).
-    pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
-        self.reset(); // reset board data
-        self.second_player_extension.init_survival(ai_type); // set the second player to be an AI
     }
 
     /// Undo the last move and sends a message to the second player.
@@ -182,6 +167,133 @@ impl BoardState {
 
         let col = self.game_history[num_moves as usize]; // Get the column the last move was made in
         self.disks.rm_disk_from_col(col); // Remove the disk from the columns
+        self.handoff_to_second_player(ConnectionProtocol::UNDO)
+            .unwrap_or_default();
+    }
+
+    /// Returns a result of whether the second player extension will eventually
+    /// call back with a move.
+    pub fn handoff_to_second_player(
+        &mut self,
+        selected_col: u8,
+    ) -> Result<RequestMoveResult, String> {
+        let res = self
+            .second_player_extension
+            .request_move(selected_col, self)?;
+        if selected_col != ConnectionProtocol::UNDO && res == RequestMoveResult::WillRerenderLater {
+            self.can_move = false;
+            Ok(res)
+        } else {
+            //////xxx
+            Ok(res)
+        }
+    }
+
+    /// Handles all the board changes based on a message from the second player.
+    pub fn update_state_from_second_player_message(&mut self, msg: GameUpdateMessage) {
+        log!(format!("Received {:?}", msg));
+        match msg {
+            BoardStateMessage(update) => {
+                // if the message is a non-winning move, it will be the client's turn next, so they can move
+                if !update.game_won {
+                    if self.current_player != DiskColor::Empty {
+                        self.can_move = update.is_p1_turn == (self.current_player == DiskColor::P1);
+                    }
+                    self.info_message = if update.is_p1_turn {
+                        InfoMessage::P1Turn
+                    } else {
+                        InfoMessage::P2Turn
+                    };
+                } else {
+                    self.info_message = if update.is_p1_turn {
+                        InfoMessage::P2Win
+                    } else {
+                        InfoMessage::P1Win
+                    };
+                }
+                // update the board
+                self.disks = Disks::from(update);
+            }
+
+            SimpleMessage(msg) => {
+                // initialization, telling the client which player they are
+                match msg {
+                    ConnectionProtocol::IS_PLAYER_1 => {
+                        self.current_player = DiskColor::P1;
+                        self.can_move = false;
+                        self.info_message = InfoMessage::WaitingForOpponent;
+                    }
+                    ConnectionProtocol::IS_PLAYER_2 => {
+                        self.current_player = DiskColor::P2;
+                        self.can_move = false;
+                        self.info_message = InfoMessage::P1Turn;
+                    }
+                    ConnectionProtocol::IS_SPECTATOR => {
+                        self.current_player = DiskColor::Empty;
+                        self.can_move = false;
+                        // accounts for the fact that the spectator does not join at the beginning of the game.
+                        if self.num_moves % 2 == 0 {
+                            self.info_message = InfoMessage::P1Turn;
+                        } else {
+                            self.info_message = InfoMessage::P2Turn;
+                        }
+                    }
+                    ConnectionProtocol::SECOND_PLAYER_CONNECTED => {
+                        if self.current_player == DiskColor::P1 {
+                            self.can_move = true;
+                            self.info_message = InfoMessage::P1Turn;
+                        }
+                    }
+                    ConnectionProtocol::CONNECTION_FAILURE => {
+                        self.info_message = InfoMessage::ConnectionFailed;
+                    }
+                    ConnectionProtocol::COL_0..=ConnectionProtocol::COL_6 => {
+                        self.make_move(msg).unwrap();
+                        if !self.disks.check_last_drop_won() {
+                            self.can_move = true;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            _ => panic!("Received invalid update message from the task reading from the server."),
+        }
+    }
+
+    /// Resets the board, and requests a server connection.
+    pub fn init_online(&mut self, lobby: String) {
+        self.reset(); // reset board data
+        self.info_message = InfoMessage::Connecting;
+        self.second_player_extension.init_online(lobby); // set the second player to be online
+        log!(format!(
+            "Extension Mode: {}",
+            match &self.second_player_extension.mode {
+                SecondPlayerExtensionMode::OnlinePlayer { .. } => "online",
+                SecondPlayerExtensionMode::AI(_) => "AI",
+                SecondPlayerExtensionMode::SurvivalMode(_) => "survival",
+                SecondPlayerExtensionMode::None => "none",
+            }
+        ));
+        if self.second_player_extension.mode == SecondPlayerExtensionMode::None {
+            self.info_message = InfoMessage::ConnectionFailed;
+        }
+    }
+
+    /// Resets the board, and extends with an AI as the second player.
+    pub fn init_ai(&mut self, ai_type: SecondPlayerAIMode) {
+        self.reset(); // reset board data
+        self.second_player_extension.init_ai(ai_type); // set the second player to be an AI
+    }
+
+    /// Resets the board, and extends to survival mode (second player is AI that improves each round).
+    pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
+        self.reset(); // reset board data
+        self.second_player_extension.init_survival(ai_type); // set the second player to be an AI
+    }
+
+    pub fn get_second_player_mode(&self) -> &SecondPlayerExtensionMode {
+        &self.second_player_extension.mode
     }
 
     /// If not online, set the current player to the next player.
@@ -205,9 +317,12 @@ impl BoardState {
     }
 
     /// Check if the game has been won, and if so, set can_move to false.
-    fn update_can_move_if_won(&mut self) {
+    /// Returns true if the game has been won.
+    fn update_can_move_if_won(&mut self) -> bool {
         if self.disks.check_last_drop_won() {
             self.can_move = false;
+            return true;
         }
+        false
     }
 }

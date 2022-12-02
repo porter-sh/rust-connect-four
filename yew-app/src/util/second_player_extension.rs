@@ -1,45 +1,27 @@
-use constants::ConnectionProtocol;
+use constants::*;
 use tokio::sync::mpsc::UnboundedSender;
 use yew::Callback;
 
 use crate::{
-    ai::{ai, perfect::PerfectAI, random::RandomAI},
-    util::net::{
-        self,
-        ServerMessage::{self, BoardState as BoardStateMessage, SimpleMessage, UndoMove},
+    ai::{perfect::PerfectAI, random::RandomAI},
+    util::{
+        board_state::RequestMoveResult,
+        net,
+        util::{
+            GameUpdateMessage::{self, BoardState as BoardStateMessage, SimpleMessage, UndoMove},
+            SecondPlayerExtensionMode,
+        },
     },
 };
 
-use std::{cell::RefCell, rc::Rc};
-
-pub enum SecondPlayerExtensionMode {
-    OnlinePlayer {
-        sender: UnboundedSender<ServerMessage>,
-        send_update_as_col_num: Rc<RefCell<bool>>,
-    }, // vs another person over the internet
-    AI(Box<dyn ai::AI>),                   // singleplayer vs bot
-    SurvivalMode(Box<dyn ai::SurvivalAI>), // AI mode, but gets progressively harder
-    None,                                  // local multiplayer
-}
-
 use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
 
-impl PartialEq for SecondPlayerExtensionMode {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (OnlinePlayer { .. }, OnlinePlayer { .. }) => true,
-            (AI(_), AI(_)) => true,
-            (SurvivalMode(_), SurvivalMode(_)) => true,
-            (None, None) => true,
-            _ => false,
-        }
-    }
-}
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(PartialEq)]
 pub struct SecondPlayerExtension {
-    mode: SecondPlayerExtensionMode,
-    rerender_board_callback: Callback<ServerMessage>,
+    pub mode: SecondPlayerExtensionMode,
+    rerender_board_callback: Callback<GameUpdateMessage>,
 }
 
 use super::{
@@ -48,7 +30,7 @@ use super::{
 };
 
 impl SecondPlayerExtension {
-    pub fn new(rerender_board_callback: Callback<ServerMessage>) -> Self {
+    pub fn new(rerender_board_callback: Callback<GameUpdateMessage>) -> Self {
         Self {
             mode: None,
             rerender_board_callback,
@@ -66,16 +48,14 @@ impl SecondPlayerExtension {
                 sender,
                 send_update_as_col_num,
             },
-            _ => None,
+            _ => None, // connection failed
         }
     }
 
     /// Discards the previous extension, and replaces it with a new AI.
     pub fn init_ai(&mut self, ai_type: SecondPlayerAIMode) {
         self.mode = AI(match ai_type {
-            SecondPlayerAIMode::Random => {
-                Box::new(RandomAI::new(self.rerender_board_callback.clone()))
-            }
+            SecondPlayerAIMode::Random => Box::new(RandomAI),
             SecondPlayerAIMode::Perfect => {
                 Box::new(PerfectAI::new(15, self.rerender_board_callback.clone()))
             }
@@ -96,7 +76,11 @@ impl SecondPlayerExtension {
     /// Returns Result of whether the second player extension will eventually
     /// call back with a move.
     /// Should always be non-blocking.
-    pub fn request_move(&self, selected_col: u8, board_state: &BoardState) -> Result<bool, String> {
+    pub fn request_move(
+        &self,
+        selected_col: u8,
+        board_state: &BoardState,
+    ) -> Result<RequestMoveResult, String> {
         match &self.mode {
             OnlinePlayer {
                 sender,
@@ -110,14 +94,28 @@ impl SecondPlayerExtension {
                 )?;
             }
             AI(ai) => {
-                ai.request_move(&board_state.disks);
+                if selected_col != ConnectionProtocol::UNDO && board_state.can_move {
+                    let res = ai.request_move(&board_state.disks);
+                    return Ok(if res < BOARD_WIDTH {
+                        RequestMoveResult::RerenderNow(res)
+                    } else {
+                        RequestMoveResult::WillRerenderLater
+                    });
+                }
             }
             SurvivalMode(ai) => {
-                ai.request_move(&board_state.disks);
+                if selected_col != ConnectionProtocol::UNDO && board_state.can_move {
+                    let res = ai.request_move(&board_state.disks);
+                    return Ok(if res < BOARD_WIDTH {
+                        RequestMoveResult::RerenderNow(res)
+                    } else {
+                        RequestMoveResult::WillRerenderLater
+                    });
+                }
             }
-            None => return Ok(false),
+            None => return Ok(RequestMoveResult::NoRequestMade),
         }
-        Ok(true)
+        Ok(RequestMoveResult::WillRerenderLater)
     }
 
     pub fn undo_enabled_for_online(&self) -> bool {
@@ -164,7 +162,7 @@ impl SecondPlayerExtension {
 
     fn update_server(
         board_state: &BoardState,
-        sender: &UnboundedSender<ServerMessage>,
+        sender: &UnboundedSender<GameUpdateMessage>,
         send_update_as_col_num: Rc<RefCell<bool>>,
         selected_col: u8,
     ) -> Result<(), String> {

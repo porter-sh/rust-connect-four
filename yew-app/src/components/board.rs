@@ -2,16 +2,18 @@
 //! Board contains the internal BoardState, and renders that state through Column components
 //! Board also accepts user input when in the middle of a game via Column components
 
-use super::{column::*, game_control_buttons::UtilityBar};
+use super::{
+    column::*,
+    utility_bar::{InfoMessage, UtilityBar},
+};
 use crate::{
     router::{AIRoute, Route},
     util::{
-        board_state::BoardState, net::ServerMessage, util::SecondPlayerAIMode,
-        util::SecondPlayerSurvivalAIMode,
+        board_state::BoardState,
+        util::{GameUpdateMessage, SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
     },
 };
 use constants::*;
-use gloo::console::log;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
 use yew_router::{prelude::*, scope_ext::HistoryHandle};
@@ -19,7 +21,7 @@ use yew_router::{prelude::*, scope_ext::HistoryHandle};
 pub enum BoardMessages {
     Rerender,
     RerenderUtilityBar,
-    RerenderAndUpdateBoard(ServerMessage),
+    RerenderAndUpdateBoard(GameUpdateMessage),
 }
 
 /// Board component to store state of the board, to render the board, and to accept user input
@@ -40,7 +42,7 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        log!("Updating Board");
+        // log!("Updating Board");
         if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
             self.board
                 .borrow_mut()
@@ -85,7 +87,7 @@ impl Board {
     pub fn new(ctx: &Context<Board>) -> Self {
         let board_origin = Rc::new(RefCell::new(BoardState::new(
             ctx.link()
-                .callback(|msg: ServerMessage| BoardMessages::RerenderAndUpdateBoard(msg)),
+                .callback(|msg: GameUpdateMessage| BoardMessages::RerenderAndUpdateBoard(msg)),
         )));
         Self {
             board: Rc::clone(&board_origin),
@@ -127,10 +129,11 @@ impl Board {
                             .init_survival(SecondPlayerSurvivalAIMode::Perfect),
                     };
                 }
-                _ => board
-                    .borrow_mut()
-                    .second_player_extension
-                    .remove_extension(),
+                _ => {
+                    let mut board = board.borrow_mut();
+                    board.second_player_extension.remove_extension();
+                    board.info_message = InfoMessage::NoMessage;
+                }
             }
         }
     }
