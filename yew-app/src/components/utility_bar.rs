@@ -21,7 +21,7 @@ use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
 
 use gloo::console::error;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum InfoMessage {
     P1Turn,
     P2Turn,

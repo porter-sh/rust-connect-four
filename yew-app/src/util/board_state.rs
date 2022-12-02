@@ -1,4 +1,6 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
+use core::num;
+
 use crate::{
     components::utility_bar::InfoMessage,
     util::{
@@ -74,44 +76,17 @@ impl BoardState {
 
     /// Does everything required for the next player to make a move in the given column.
     pub fn make_move(&mut self, col: u8) -> Result<(), String> {
-        log!("In make_move");
         self.disks.drop_disk(col)?;
         let game_won = self.update_can_move_if_won();
         self.update_player_if_not_online();
         self.update_game_history(col);
         // TODO FIX THIS LOGIC
-        self.info_message = match self.current_player {
-            DiskColor::P1 => {
-                if self.can_move {
-                    InfoMessage::P1Turn
-                } else {
-                    InfoMessage::P2Turn
-                }
-            }
-            DiskColor::P2 => {
-                if self.can_move {
-                    InfoMessage::P2Turn
-                } else {
-                    InfoMessage::P1Win
-                }
-            }
-            // Spectating
-            DiskColor::Empty => {
-                if game_won {
-                    if self.num_moves % 2 == 0 {
-                        InfoMessage::P1Win
-                    } else {
-                        InfoMessage::P2Win
-                    }
-                } else {
-                    if self.num_moves % 2 == 0 {
-                        InfoMessage::P1Turn
-                    } else {
-                        InfoMessage::P2Turn
-                    }
-                }
-            }
-        };
+        log!(format!(
+            "game_won: {}, num_moves {}",
+            game_won, self.num_moves
+        ));
+        self.update_info_message(game_won);
+        log!(format!("Info message: {:?}", self.info_message));
         Ok(())
     }
 
@@ -314,6 +289,28 @@ impl BoardState {
         if self.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
             self.can_move = false;
         }
+    }
+
+    fn update_info_message(&mut self, game_won: bool) {
+        self.info_message = if if self.second_player_extension.is_online_player() {
+            self.current_player == DiskColor::P2
+        } else {
+            self.num_moves % 2 == 0
+        } {
+            // P1 next
+            if game_won {
+                InfoMessage::P2Win
+            } else {
+                InfoMessage::P1Turn
+            }
+        } else {
+            // P2 next
+            if game_won {
+                InfoMessage::P1Win
+            } else {
+                InfoMessage::P2Turn
+            }
+        };
     }
 
     /// Check if the game has been won, and if so, set can_move to false.
