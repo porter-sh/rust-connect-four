@@ -1,5 +1,6 @@
 */target/*
 yew-app/dist/*
 server/cpplib/*
-server/src/bindings.rs
+!server/cpplib/board.hpp
+!server/cpplib/safe_board.cc
 Cargo.lock

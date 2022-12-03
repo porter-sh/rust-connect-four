@@ -16,5 +16,4 @@ tokio = { version = "1.22.0", features = ["macros", "net", "rt-multi-thread", "s
 tokio-tungstenite = "0.17.2"
 
 # [build-dependencies]
-# bindgen = "0.62.0"
 # cc = "1.0.76"

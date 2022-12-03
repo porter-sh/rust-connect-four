@@ -4,11 +4,11 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use gloo::utils::errors::JsError;
-use gloo_net::websocket::{
+use gloo::net::websocket::{
     futures::WebSocket,
     Message::{self, Bytes, Text},
 };
+use gloo::utils::errors::JsError;
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver, UnboundedSender},
     oneshot::{self, Receiver as OneshotReceiver, Sender as OneshotSender},
