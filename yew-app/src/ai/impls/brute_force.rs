@@ -7,7 +7,7 @@ use super::{
         ai::{SurvivalAI, AI},
         util::AI_INCREMENT_MESSAGE,
     },
-    perfect_helper::PerfectAIHelper,
+    brute_force_helper::BruteForceAIHelper,
     position_lookup_table::PositionLookupTable,
 };
 use crate::{
@@ -22,11 +22,11 @@ use yew::Callback;
 
 use GameUpdateMessage::SimpleMessage;
 
-pub struct PerfectAI {
+pub struct BruteForceAI {
     pub request_sender: UnboundedSender<GameUpdateMessage>,
 }
 
-impl PerfectAI {
+impl BruteForceAI {
     pub fn new(
         max_moves_look_ahead: u8,
         rerender_board_callback: Callback<GameUpdateMessage>,
@@ -42,7 +42,7 @@ impl PerfectAI {
         max_moves_look_ahead: u8,
     ) {
         spawn_local(async move {
-            let mut ai = PerfectAIHelper::new(max_moves_look_ahead);
+            let mut ai = BruteForceAIHelper::new(max_moves_look_ahead);
             while let Some(msg) = receiver.recv().await {
                 match msg {
                     GameUpdateMessage::Disks(disks) => {
@@ -71,7 +71,7 @@ impl PerfectAI {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl AI for PerfectAI {
+impl AI for BruteForceAI {
     fn request_move(&self, disks: &Disks) -> u8 {
         self.request_sender
             .send(GameUpdateMessage::Disks(disks.clone()))
@@ -82,7 +82,7 @@ impl AI for PerfectAI {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl SurvivalAI for PerfectAI {
+impl SurvivalAI for BruteForceAI {
     /// Used for survival mode, to make the AI harder each round.
     fn increment_difficulty(&mut self) {
         self.request_sender

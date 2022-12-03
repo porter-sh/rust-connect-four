@@ -9,18 +9,18 @@ use crate::{
 };
 use constants::*;
 
-pub struct PerfectAIHelper {
+pub struct BruteForceAIHelper {
     pub max_moves_look_ahead: u8,
     // Stores a hashmap of recent calculated board states, to avoid recalculating
     pub position_lookup_table: PositionLookupTable,
 }
 
-impl PerfectAIHelper {
+impl BruteForceAIHelper {
     const COLUMN_ORDER: [u8; BOARD_WIDTH as usize] = [3, 2, 4, 1, 5, 0, 6];
 
     // PerfectAIHelper::new(max_moves_look_ahead)
-    pub fn new(max_moves_look_ahead: u8) -> PerfectAIHelper {
-        PerfectAIHelper {
+    pub fn new(max_moves_look_ahead: u8) -> BruteForceAIHelper {
+        BruteForceAIHelper {
             max_moves_look_ahead,
             position_lookup_table: PositionLookupTable::new(LOOKUP_TABLE_SIZE),
         }

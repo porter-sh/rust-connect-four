@@ -1,5 +1,5 @@
-pub mod perfect;
+pub mod brute_force;
 pub mod random;
 // only used internally
-mod perfect_helper;
+mod brute_force_helper;
 mod position_lookup_table;

@@ -67,11 +67,13 @@ pub enum GameUpdateMessage {
     UndoMove(GameUpdate),
 }
 
+/// Enum to represent the underlying AI implementation to be used
 pub enum SecondPlayerAIMode {
     Random,
     Perfect,
 }
 
+/// Enum to represent the underlying SurvivalAI implementation to be used
 pub enum SecondPlayerSurvivalAIMode {
     Perfect,
 }
