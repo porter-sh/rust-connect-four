@@ -8,6 +8,7 @@ use crate::{
     util::disks::Disks,
 };
 use constants::*;
+use gloo::console::log;
 
 pub struct BruteForceAIHelper {
     pub max_moves_look_ahead: u8,
@@ -155,6 +156,7 @@ impl BruteForceAIHelper {
 
     /// Returns which column the AI would drop a disk into.
     pub async fn get_move(&mut self, board: &Disks) -> u8 {
+        log!("move requested");
         // start each column with a bad score
         let mut score = [-100; BOARD_WIDTH as usize];
         let num_moves_into_game = board.get_num_disks();

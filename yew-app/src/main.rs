@@ -9,7 +9,8 @@
 ///// TODO LIST /////
 ///
 /// Improve AI efficiency / moves looked ahead
-/// Add ML based AI
+///
+/// run.md
 ///
 /// Deploy the code somewhere
 ///

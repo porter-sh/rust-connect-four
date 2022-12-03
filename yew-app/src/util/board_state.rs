@@ -131,11 +131,7 @@ impl BoardState {
 
         if !self.second_player_extension.is_online_player() {
             // Revert to previous player
-            self.current_player = if self.current_player == DiskColor::P1 {
-                DiskColor::P2
-            } else {
-                DiskColor::P1
-            };
+            self.current_player = self.current_player.opposite();
             self.second_player_extension
                 .switch_ai_color_if_ai_or_survival(if self.num_moves % 2 == 0 {
                     DiskColor::P2
@@ -167,7 +163,6 @@ impl BoardState {
             self.can_move = false;
             Ok(res)
         } else {
-            //////xxx
             Ok(res)
         }
     }
@@ -287,17 +282,10 @@ impl BoardState {
     }
 
     fn update_info_message(&mut self, variant: UpdateInfoMessageVariant) {
-        let p1_next = if self.second_player_extension.is_online_player() {
-            self.current_player
-                == if variant == UpdateInfoMessageVariant::Undo {
-                    DiskColor::P1
-                } else {
-                    DiskColor::P2
-                }
-        } else {
-            self.num_moves % 2 == 0
-        };
-        self.info_message = if p1_next {
+        let num_moves = self.disks.get_num_disks();
+        self.info_message = if num_moves == 42 {
+            InfoMessage::Draw
+        } else if num_moves % 2 == 0 {
             if variant == UpdateInfoMessageVariant::GameWon {
                 InfoMessage::P2Win
             } else {

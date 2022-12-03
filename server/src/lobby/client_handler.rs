@@ -85,14 +85,14 @@ pub async fn new_client_handler(
                             binary: vec![ConnectionProtocol::SECOND_PLAYER_CONNECTED],
                             player_num: 2,
                         })
-                        .unwrap();
+                        .unwrap_or_default();
                     #[cfg(not(feature = "cppintegration"))]
                     sender
                         .send(BoardState(MessageFromClient {
                             binary: vec![ConnectionProtocol::SECOND_PLAYER_CONNECTED],
                             player_num: 2,
                         }))
-                        .unwrap();
+                        .unwrap_or_default();
                 }
                 let sender = sender.clone();
                 subtasks.tasks.push(task::spawn(async move {
@@ -125,7 +125,7 @@ async fn player_listener(
             if binary.len() == 1 && binary[0] != ConnectionProtocol::SECOND_PLAYER_CONNECTED {
                 sender
                     .send(MessageFromClient { binary, player_num })
-                    .unwrap();
+                    .unwrap_or_default();
             } else {
                 println!("Player sent unrecognized message.");
                 break;
@@ -133,11 +133,11 @@ async fn player_listener(
 
             #[cfg(not(feature = "cppintegration"))]
             if binary.len() == 1 {
-                sender.send(SpecialMessage(binary[0])).unwrap();
+                sender.send(SpecialMessage(binary[0])).unwrap_or_default();
             } else if binary.len() == ConnectionProtocol::MESSAGE_SIZE {
                 sender
                     .send(BoardState(MessageFromClient { binary, player_num }))
-                    .unwrap();
+                    .unwrap_or_default();
             } else {
                 println!("Player sent unrecognized message.");
                 break;
@@ -155,11 +155,11 @@ async fn player_listener(
             binary: vec![ConnectionProtocol::KILL_CONNECTION],
             player_num,
         })
-        .unwrap();
+        .unwrap_or_default();
     #[cfg(not(feature = "cppintegration"))]
     sender
         .send(SpecialMessage(ConnectionProtocol::KILL_CONNECTION))
-        .unwrap();
+        .unwrap_or_default();
     println!("Ending player listener.");
 }
 
