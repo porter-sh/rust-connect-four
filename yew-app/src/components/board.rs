@@ -142,7 +142,7 @@ impl Board {
                 Route::VersusBot => {
                     match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {
                         AIRoute::Random => board.borrow_mut().init_ai(SecondPlayerAIMode::Random),
-                        AIRoute::Perfect => board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect),
+                        AIRoute::BruteForce => board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect),
                         AIRoute::Survival => board
                             .borrow_mut()
                             .init_survival(SecondPlayerSurvivalAIMode::Perfect),
