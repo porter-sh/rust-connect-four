@@ -26,6 +26,6 @@ jobs:
       run: |
         git config --local user.name "deploy-bot"
         git add ./docs
-        run: git commit -m "Auto build target."
+        git commit -m "Auto build target."
     - name: Push Changes
       run: git push
