@@ -19,4 +19,4 @@ jobs:
     - name: Install trunk
       run: cargo install trunk
     - name: Build
-      run: trunk build --release
+      run: trunk build --release --dist ./docs ./yew-app/index.html
