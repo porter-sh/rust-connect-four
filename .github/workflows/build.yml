@@ -14,17 +14,18 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Wasm Target
-      run: rustup target add wasm32-unknown-unknown
-    - name: Install trunk
-      run: cargo install trunk
+    - name: Setup
+      run: |
+        rustup target add wasm32-unknown-unknown
+        cargo install trunk
     - name: Build
       run: trunk build --release --dist ./docs ./yew-app/index.html
     - name: Check for Changes
       run: git status
-    - name: Stage Changes
-      run: git add ./docs
     - name: Commit Changes
-      run: git commit -m "Auto build target."
+      run: |
+        git config --local user.name "deploy-bot"
+        git add ./docs
+        run: git commit -m "Auto build target."
     - name: Push Changes
       run: git push
