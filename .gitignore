@@ -1,5 +1,4 @@
 */target
-/docs
 yew-app/dist
 server/cpplib/*
 !server/cpplib/board.hpp
