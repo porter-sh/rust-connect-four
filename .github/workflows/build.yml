@@ -20,3 +20,11 @@ jobs:
       run: cargo install trunk
     - name: Build
       run: trunk build --release --dist ./docs ./yew-app/index.html
+    - name: Check for Changes
+      run: git status
+    - name: Stage Changes
+      run: git add ./docs
+    - name: Commit Changes
+      run: git commit -m "Auto build target."
+    - name: Push Changes
+      run: git push
