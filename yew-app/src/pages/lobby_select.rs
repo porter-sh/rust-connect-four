@@ -21,6 +21,7 @@
  */
 
 use crate::{components::game_button::GameButton, router::Route};
+use gloo::{console::error, utils::document};
 use yew::prelude::*;
 
 /// LobbySelect component
@@ -32,7 +33,14 @@ pub fn lobby_select() -> Html {
             <div class="background-blur" />
             <div class={"menu-container"}>
                 <p class="menu-txt">{"Choose Lobby"}</p>
-                <form action={"/online-multiplayer/"}>
+                <form action={{
+                    if let Ok(Some(base_uri)) = document().base_uri() {
+                        base_uri + "online-multiplayer/"
+                    } else {
+                        error!("Error getting base uri");
+                        "/online-multiplayer/".to_string()
+                    }
+                }}>
                     <label class={"menu-txt"} style={"font-size:15px"}
                             for="lobby">{"Lobby Name: "}</label>
                     <input type="text" name="lobby" id="lobby-input"
