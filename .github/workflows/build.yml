@@ -19,7 +19,7 @@ jobs:
         rustup target add wasm32-unknown-unknown
         cargo install trunk
     - name: Build
-      run: trunk build --release --dist ./docs ./yew-app/index.html
+      run: trunk build --release --public-url /rust-connect-four/ --dist ./docs ./yew-app/index.html
     - name: Check for Changes
       run: git status
     - name: Commit Changes
