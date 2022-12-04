@@ -6,10 +6,26 @@
 //!
 //! When not in a game or if the game is won, Column will not accept player input
 
-use crate::util::{
-    board_state::{BoardState, RequestMoveResult},
-    util::{DiskColor, GameUpdateMessage::SimpleMessage},
-};
+/*
+ * This file is part of Rust-Connect-Four
+ * Copyright (C) 2022 Alexander Broihier <alexanderbroihier@gmail.com>
+ * Copyright (C) 2022 Porter Shawver <portershawver@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+use crate::util::{board_state::BoardState, util::DiskColor};
 use constants::*;
 use gloo::events::EventListener;
 use std::{cell::RefCell, rc::Rc};
@@ -39,7 +55,7 @@ pub struct Column {
 
 /// Allows Column to be used as an HTML component
 impl Component for Column {
-    type Message = RequestMoveResult;
+    type Message = ();
     type Properties = ColumnProperties;
 
     /// Creates the Column component and creates the onclick callback
@@ -62,15 +78,11 @@ impl Component for Column {
 
     /// Rerenders the Column if msg == Rerender
     /// If the game is won, the Board will also be rerendered, so all Columns update to not accept user input
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, _msg: Self::Message) -> bool {
         // Tell the entire Board to rerender
-        ctx.props().rerender_board_callback.emit(
-            if let RequestMoveResult::RerenderNow(col) = msg {
-                BoardMessages::RerenderAndUpdateBoard(SimpleMessage(col))
-            } else {
-                BoardMessages::Rerender
-            },
-        );
+        ctx.props()
+            .rerender_board_callback
+            .emit(BoardMessages::RerenderUtilityBar);
         return false; // don't need to rerender, because the board will rerender anyways.
     }
 

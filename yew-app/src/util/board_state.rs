@@ -1,11 +1,34 @@
 //! board_state.position contains BoardState, which stores board representation and additional state
+
+/*
+ * This file is part of Rust-Connect-Four
+ * Copyright (C) 2022 Alexander Broihier <alexanderbroihier@gmail.com>
+ * Copyright (C) 2022 Porter Shawver <portershawver@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 use crate::{
     components::utility_bar::InfoMessage,
     util::{
         disks::Disks,
         second_player_extension::SecondPlayerExtension,
-        util::GameUpdateMessage::{self, BoardState as BoardStateMessage, SimpleMessage},
-        util::{DiskColor, SecondPlayerAIMode, SecondPlayerSurvivalAIMode},
+        util::{
+            DiskColor,
+            GameUpdateMessage::{self, BoardState as BoardStateMessage, SimpleMessage},
+            RequestMoveResult, SecondPlayerAIMode, SecondPlayerSurvivalAIMode,
+        },
     },
 };
 use constants::*;
@@ -14,19 +37,6 @@ use yew::Callback;
 use gloo::console::log;
 
 use super::util::SecondPlayerExtensionMode;
-
-#[derive(PartialEq)]
-pub enum RequestMoveResult {
-    WillRerenderLater,
-    RerenderNow(u8),
-    NoRequestMade,
-}
-
-impl Default for RequestMoveResult {
-    fn default() -> Self {
-        Self::NoRequestMade
-    }
-}
 
 #[derive(PartialEq)]
 enum UpdateInfoMessageVariant {
@@ -106,7 +116,7 @@ impl BoardState {
     pub fn make_move_and_handoff_to_second_player(
         &mut self,
         selected_col: u8,
-    ) -> Result<RequestMoveResult, String> {
+    ) -> Result<(), String> {
         self.make_move(selected_col)?;
         if !self.can_move && self.second_player_extension.is_survival_mode() {
             self.second_player_extension
@@ -115,7 +125,7 @@ impl BoardState {
             self.game_history = [0u8; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
             self.num_moves = 0;
             self.can_move = true;
-            Ok(RequestMoveResult::NoRequestMade)
+            Ok(())
         } else {
             // Handoff to second player
             self.handoff_to_second_player(selected_col)
@@ -152,19 +162,17 @@ impl BoardState {
 
     /// Returns a result of whether the second player extension will eventually
     /// call back with a move.
-    pub fn handoff_to_second_player(
-        &mut self,
-        selected_col: u8,
-    ) -> Result<RequestMoveResult, String> {
+    pub fn handoff_to_second_player(&mut self, selected_col: u8) -> Result<(), String> {
         let res = self
             .second_player_extension
             .request_move(selected_col, self)?;
         if selected_col != ConnectionProtocol::UNDO && res == RequestMoveResult::WillRerenderLater {
             self.can_move = false;
-            Ok(res)
-        } else {
-            Ok(res)
         }
+        if let RequestMoveResult::RerenderNow(col) = res {
+            self.update_state_from_second_player_message(SimpleMessage(col));
+        }
+        Ok(())
     }
 
     /// Handles all the board changes based on a message from the second player.

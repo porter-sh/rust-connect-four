@@ -1,8 +1,27 @@
 //! util contains helper structs for the player disks
 
+/*
+ * This file is part of Rust-Connect-Four
+ * Copyright (C) 2022 Alexander Broihier <alexanderbroihier@gmail.com>
+ * Copyright (C) 2022 Porter Shawver <portershawver@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 use crate::{ai::ai, util::disks::Disks};
 use constants::*;
-use std::{cell::RefCell, cmp::min, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum to store the state at a particular board space
@@ -15,14 +34,7 @@ pub enum DiskColor {
 }
 
 impl DiskColor {
-    pub fn to_str(&self) -> &str {
-        match self {
-            DiskColor::Empty => "empty",
-            DiskColor::P1 => "p1",
-            DiskColor::P2 => "p2",
-        }
-    }
-
+    /// Switches from P1 to P2 and vice versa
     pub fn opposite(&self) -> DiskColor {
         match self {
             DiskColor::Empty => DiskColor::Empty,
@@ -32,33 +44,7 @@ impl DiskColor {
     }
 }
 
-/// DiskData contains fields that help determine looping over the board to determine if a dropped disk wins the game
-pub struct DiskData {
-    pub row: u8,
-    pub col: u8,
-    pub color: DiskColor,
-    pub left_range: u8,
-    pub right_range: u8,
-    pub up_range: u8,
-    pub down_range: u8,
-}
-
-impl DiskData {
-    /// Create DiskData and store how far in each direction we should loop
-    pub fn new(row: u8, col: u8, color: DiskColor) -> Self {
-        Self {
-            row,
-            col,
-            color,
-            left_range: min(3, col),
-            right_range: min(3, BOARD_WIDTH as u8 - col - 1),
-            up_range: min(3, row),
-            down_range: min(3, BOARD_HEIGHT as u8 - row - 1),
-        }
-    }
-}
-
-/// Enum that represents a message to be sent to the server
+/// Enum that represents a message for the SecondPlayerExtension
 #[derive(Debug)]
 pub enum GameUpdateMessage {
     BoardState(GameUpdate),
@@ -67,17 +53,26 @@ pub enum GameUpdateMessage {
     UndoMove(GameUpdate),
 }
 
-/// Enum to represent the underlying AI implementation to be used
+/// Enum that represents the result of a move requested by the second player extension
+#[derive(PartialEq)]
+pub enum RequestMoveResult {
+    WillRerenderLater,
+    RerenderNow(u8),
+    NoRequestMade,
+}
+
+/// Enum that represents an AI implementation to use
 pub enum SecondPlayerAIMode {
     Random,
     Perfect,
 }
 
-/// Enum to represent the underlying SurvivalAI implementation to be used
+/// Enum that represents a SurvivalAI implementation to use
 pub enum SecondPlayerSurvivalAIMode {
     Perfect,
 }
 
+/// Enum to store different kinds of second players
 pub enum SecondPlayerExtensionMode {
     OnlinePlayer {
         sender: UnboundedSender<GameUpdateMessage>,
@@ -95,6 +90,8 @@ pub enum SecondPlayerExtensionMode {
 }
 
 use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
+
+/// SecondPlayerExtensionModes of the same variant are treated as equal
 impl PartialEq for SecondPlayerExtensionMode {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

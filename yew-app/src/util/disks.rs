@@ -2,10 +2,33 @@
 //! the game board with bits. This allows for super efficient calculation of if
 //! there was a winner, and takes up less memory.
 
+/*
+ * This file is part of Rust-Connect-Four
+ *
+ * File derived from Connect4 Game Solver <https://github.com/PascalPons/connect4>
+ * Copyright (C) 2017-2019 Pascal Pons <contact@gamesolver.org>
+ *
+ * Copyright (C) 2022 Alexander Broihier <alexanderbroihier@gmail.com>
+ * Copyright (C) 2022 Porter Shawver <portershawver@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 use super::util::DiskColor;
 use constants::{GameUpdate, BOARD_HEIGHT, BOARD_WIDTH};
 
-/// 2D array of player disks to internally store the board state
+/// Internal storage of the entire board
 #[derive(PartialEq, Clone, Debug)]
 pub struct Disks {
     position: u64, // records the location of disks for the current player as 1s
@@ -13,6 +36,7 @@ pub struct Disks {
     is_p1_turn: bool,
 }
 
+/// Create the board as it would be at the very start of the match
 impl Default for Disks {
     fn default() -> Self {
         Self {
@@ -23,6 +47,7 @@ impl Default for Disks {
     }
 }
 
+/// Turns an intermediary GameUpdate object into a Disks object
 impl From<GameUpdate> for Disks {
     fn from(game: GameUpdate) -> Self {
         Self {
@@ -144,6 +169,7 @@ impl Disks {
         self.mask + self.position
     }
 
+    /// Turns a Disks object into an intermediary GameUpdate object
     pub fn to_game_update(&self, game_won: bool) -> GameUpdate {
         GameUpdate {
             position: self.position,
@@ -153,6 +179,7 @@ impl Disks {
         }
     }
 
+    /// Returns whether it is the first player's turn
     pub fn get_is_p1_turn(&self) -> bool {
         self.is_p1_turn
     }
