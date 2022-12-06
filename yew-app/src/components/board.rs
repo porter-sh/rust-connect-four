@@ -140,15 +140,18 @@ impl Board {
             ));
             match route {
                 Route::LocalMultiplayer => {
+                    gloo::console::log!("in local multiplayer");
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
                 }
                 Route::OnlineMultiplayer => {
+                    gloo::console::log!("in online multiplayer");
                     // let query_string = location.search();
                     // let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
                     // board.borrow_mut().init_online(lobby.to_string());
                     // let query = location.query();
                 }
                 Route::VersusBot => {
+                    gloo::console::log!("in versus bot");
                     if let Some(ai_route) = AIRoute::recognize(location.path()) {
                         gloo::console::log!(format!("path: {}, ai_route: {:?}", path, ai_route));
                         match ai_route {
@@ -165,6 +168,7 @@ impl Board {
                     }
                 }
                 _ => {
+                    gloo::console::log!("in other");
                     let mut board = board.borrow_mut();
                     board.second_player_extension.remove_extension();
                     board.info_message = InfoMessage::NoMessage;
