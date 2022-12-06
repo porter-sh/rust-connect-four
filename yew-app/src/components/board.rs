@@ -108,7 +108,6 @@ impl Board {
             ctx.link()
                 .callback(|msg: GameUpdateMessage| BoardMessages::RerenderAndUpdateBoard(msg)),
         )));
-        Self::on_reroute(board_origin.clone(), ctx.link().location().unwrap());
         Self {
             board: Rc::clone(&board_origin),
             _location_handle: Self::get_location_handle(ctx, board_origin),
@@ -127,12 +126,10 @@ impl Board {
     }
 
     fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
-        let mut path = location.path();
-        if path.len() > 18 && &path[0..18] == "/rust-connect-four" {
-            path = &path[18..];
-        }
+        let path = location.path();
         gloo::console::log!(path);
         if let Some(route) = Route::recognize(path) {
+            gloo::console::log!(format!("{:?}", route));
             match route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game

@@ -53,7 +53,7 @@ pub fn switch_ai_route(route: AIRoute) -> Html {
 }
 
 /// Enum containing the routes (pages) the app can go to
-#[derive(Clone, Routable, PartialEq)]
+#[derive(Clone, Routable, PartialEq, Debug)]
 pub enum Route {
     #[at("/")]
     Home,
