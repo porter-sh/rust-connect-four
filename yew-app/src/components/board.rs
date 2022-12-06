@@ -126,23 +126,12 @@ impl Board {
     }
 
     fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
-        let path = location.path();
-        gloo::console::log!(format!("/local-multiplayer: {:?},\n /local-multiplayer/: {:?},\n /rust-connect-four/local-multiplayer: {:?},\n /rust-connect-four/local-multiplayer/: {:?},\n rust-connect-four/local-multiplayer: {:?},\n rust-connect-four/local-multiplayer/: {:?}",
-            Route::recognize("/local-multiplayer").unwrap(),
-            Route::recognize("/local-multiplayer/").unwrap(),
-            Route::recognize("/rust-connect-four/local-multiplayer").unwrap(),
-            Route::recognize("/rust-connect-four/local-multiplayer/").unwrap(),
-            Route::recognize("rust-connect-four/local-multiplayer").unwrap(),
-            Route::recognize("rust-connect-four/local-multiplayer/").unwrap()));
-        gloo::console::log!(format!("Path: {}", path));
-        let new_path = path.strip_prefix("/rust-connect-four").unwrap_or_default();
-        gloo::console::log!(format!("new_path: {}", new_path));
-        gloo::console::log!(format!(
-            "new_path recognized: {:?}",
-            Route::recognize(new_path)
-        ));
+        let path = location
+            .path()
+            .strip_prefix("/rust-connect-four")
+            .unwrap_or(location.path());
         if let Some(route) = Route::recognize(path) {
-            gloo::console::log!(format!("{:?}", route));
+            gloo::console::log!(format!("path: {}, route: {:?}", path, route));
             match route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
