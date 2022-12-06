@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 constants = { path = "../constants" }
-yew = "0.19"
-yew-router = "0.16"
+yew = { version="0.20.0", features = ["csr"] }
+yew-router = { version="0.17.0" }
 gloo = "0.8"
 gloo-net = "0.2.4"
 gloo-utils = "0.1.5"

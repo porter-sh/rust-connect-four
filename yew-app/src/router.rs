@@ -22,18 +22,18 @@
  */
 
 use crate::pages::{ai_select::AISelect, home::Home, lobby_select::LobbySelect};
-use yew::{html, Html};
+use yew::prelude::*;
 use yew_router::prelude::*;
 
 /// Render additional page specific components / logic
 /// To be called in a Yew <Switch<Route> render={Switch::render(switch_route)} /> component
-pub fn switch_route(route: &Route) -> Html {
+pub fn switch_route(route: Route) -> Html {
     match route {
         Route::Home => html! {<Home />},
         Route::LobbySelect => html! {<LobbySelect />},
         Route::AISelect => html! {<AISelect />},
         Route::LocalMultiplayer => html! {},
-        Route::VersusBot => html! { <Switch<AIRoute> render={Switch::render(switch_ai_route)} />},
+        Route::VersusBot => html! { <Switch<AIRoute> render={switch_ai_route} /> },
         Route::OnlineMultiplayer => html! {},
         Route::NotFound => html! {
             { "This is not the page you are looking for :( LLLLL" }
@@ -44,7 +44,7 @@ pub fn switch_route(route: &Route) -> Html {
     }
 }
 
-pub fn switch_ai_route(route: &AIRoute) -> Html {
+pub fn switch_ai_route(route: AIRoute) -> Html {
     match route {
         AIRoute::Random => html! {},
         AIRoute::BruteForce => html! {},

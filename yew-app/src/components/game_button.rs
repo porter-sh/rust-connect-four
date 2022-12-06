@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use yew::{function_component, html, Callback, Properties};
+use yew::{function_component, html, Callback, Html, Properties};
 use yew_router::prelude::*;
 
 use gloo::console::error;
@@ -38,11 +38,11 @@ pub fn game_button<T>(props: &GameButtonProperties<T>) -> Html
 where
     T: Routable + 'static,
 {
-    if let Some(history) = use_history() {
+    if let Some(navigator) = use_navigator() {
         let route = props.route.clone();
         return html! {
             <button class="menu-btn" onclick={
-                Callback::from(move |_| history.push(route.clone())) // route to the specified route when clicked
+                Callback::from(move |_| navigator.push(&route)) // route to the specified route when clicked
             }>{ props.text }</button>
         };
     }

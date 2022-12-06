@@ -78,8 +78,8 @@ impl Component for UtilityBar {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        if let Some(history) = ctx.link().history() {
-            if let Some(route) = history.location().route::<Route>() {
+        if let Some(navigator) = ctx.link().navigator() {
+            if let Some(route) = ctx.link().route::<Route>() {
                 html! {
                     <div class="utility-container">
                         <span class={classes!("utility-left")}>
@@ -87,7 +87,7 @@ impl Component for UtilityBar {
                                 Route::LocalMultiplayer | Route::VersusBot | Route::OnlineMultiplayer => html! {
                                     <button class="utility-btn"
                                         onclick={
-                                            Callback::from(move |_|  history.push(Route::Home)) // route home when clicked
+                                            Callback::from(move |_|  navigator.push(&Route::Home)) // route home when clicked
                                         }> { "Quit Game" }
                                     </button> },
                                 _ => html! {},

@@ -49,7 +49,7 @@ pub mod util;
 fn app() -> Html {
     html! {
         <BrowserRouter>
-            <Switch<router::Route> render={Switch::render(router::switch_route)} /> // renders additional page specific components / logic
+            <Switch<router::Route> render={router::switch_route} /> // renders additional page specific components / logic
             <components::board::Board />
         </BrowserRouter>
     }
@@ -57,5 +57,5 @@ fn app() -> Html {
 
 fn main() {
     // run with trunk serve
-    yew::start_app::<App>();
+    yew::Renderer::<App>::new().render();
 }

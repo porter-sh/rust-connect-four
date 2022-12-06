@@ -35,7 +35,7 @@ use crate::{
 use constants::*;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
-use yew_router::{prelude::*, scope_ext::HistoryHandle};
+use yew_router::prelude::*;
 
 pub enum BoardMessages {
     Rerender,
@@ -46,7 +46,7 @@ pub enum BoardMessages {
 /// Board component to store state of the board, to render the board, and to accept user input
 pub struct Board {
     board: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
-    _history_handle: HistoryHandle, // when not dropped allows the Board to respond to route changes
+    _location_handle: LocationHandle, // when not dropped allows the Board to respond to route changes
 }
 
 impl Component for Board {
@@ -110,39 +110,44 @@ impl Board {
         )));
         Self {
             board: Rc::clone(&board_origin),
-            _history_handle: Self::get_history_handle(ctx, board_origin),
+            _location_handle: Self::get_history_handle(ctx, board_origin),
         }
     }
 
-    fn get_history_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> HistoryHandle {
+    fn get_history_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> NavigatorHandle {
         /* let callback = ctx
         .link()
         .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));*/
         ctx.link()
-            .add_history_listener(ctx.link().callback(move |history: AnyHistory| {
+            .add_navigator_listener(ctx.link().callback(move |location: Navigator| {
                 let board_clone = Rc::clone(&board);
                 // Will rerender the Board
-                Self::on_reroute(board_clone, history.location());
+                Self::on_reroute(board_clone, location);
                 BoardMessages::Rerender
             }))
             .unwrap()
     }
 
-    fn on_reroute(board: Rc<RefCell<BoardState>>, location: AnyLocation) {
+    fn on_reroute(board: Rc<RefCell<BoardState>>, location: Navigator) {
         if let Some(route) = location.route::<Route>() {
-            match route {
+            match *route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
                 }
                 Route::OnlineMultiplayer => {
-                    let query_string = location.search();
-                    let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
-                    board.borrow_mut().init_online(lobby.to_string());
+                    // let query_string = location.search();
+                    // let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
+                    // board.borrow_mut().init_online(lobby.to_string());
                 }
                 Route::VersusBot => {
-                    match location.route::<AIRoute>().unwrap_or(AIRoute::Random) {
+                    match *location
+                        .state::<AIRoute>()
+                        .unwrap_or(Rc::new(AIRoute::Random))
+                    {
                         AIRoute::Random => board.borrow_mut().init_ai(SecondPlayerAIMode::Random),
-                        AIRoute::BruteForce => board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect),
+                        AIRoute::BruteForce => {
+                            board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect)
+                        }
                         AIRoute::Survival => board
                             .borrow_mut()
                             .init_survival(SecondPlayerSurvivalAIMode::Perfect),
