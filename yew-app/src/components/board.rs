@@ -126,6 +126,7 @@ impl Board {
     }
 
     fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
+        gloo::console::log!(location.path());
         if let Some(route) = Route::recognize(location.path()) {
             match route {
                 Route::LocalMultiplayer => {
