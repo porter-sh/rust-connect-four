@@ -110,16 +110,13 @@ impl Board {
         )));
         Self {
             board: Rc::clone(&board_origin),
-            _location_handle: Self::get_history_handle(ctx, board_origin),
+            _location_handle: Self::get_location_handle(ctx, board_origin),
         }
     }
 
-    fn get_history_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> NavigatorHandle {
-        /* let callback = ctx
-        .link()
-        .callback(|col_num: u8| BoardMessages::RerenderAndUpdateColumn(col_num));*/
+    fn get_location_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> LocationHandle {
         ctx.link()
-            .add_navigator_listener(ctx.link().callback(move |location: Navigator| {
+            .add_location_listener(ctx.link().callback(move |location: Location| {
                 let board_clone = Rc::clone(&board);
                 // Will rerender the Board
                 Self::on_reroute(board_clone, location);
@@ -128,9 +125,9 @@ impl Board {
             .unwrap()
     }
 
-    fn on_reroute(board: Rc<RefCell<BoardState>>, location: Navigator) {
-        if let Some(route) = location.route::<Route>() {
-            match *route {
+    fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
+        if let Some(route) = Route::recognize(location.path()) {
+            match route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
                 }
@@ -140,18 +137,19 @@ impl Board {
                     // board.borrow_mut().init_online(lobby.to_string());
                 }
                 Route::VersusBot => {
-                    match *location
-                        .state::<AIRoute>()
-                        .unwrap_or(Rc::new(AIRoute::Random))
-                    {
-                        AIRoute::Random => board.borrow_mut().init_ai(SecondPlayerAIMode::Random),
-                        AIRoute::BruteForce => {
-                            board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect)
-                        }
-                        AIRoute::Survival => board
-                            .borrow_mut()
-                            .init_survival(SecondPlayerSurvivalAIMode::Perfect),
-                    };
+                    if let Some(ai_route) = AIRoute::recognize(location.path()) {
+                        match ai_route {
+                            AIRoute::Random => {
+                                board.borrow_mut().init_ai(SecondPlayerAIMode::Random)
+                            }
+                            AIRoute::BruteForce => {
+                                board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect)
+                            }
+                            AIRoute::Survival => board
+                                .borrow_mut()
+                                .init_survival(SecondPlayerSurvivalAIMode::Perfect),
+                        };
+                    }
                 }
                 _ => {
                     let mut board = board.borrow_mut();

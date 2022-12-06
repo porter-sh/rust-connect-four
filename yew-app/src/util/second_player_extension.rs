@@ -81,7 +81,7 @@ impl SecondPlayerExtension {
             ai: match ai_type {
                 SecondPlayerAIMode::Random => Box::new(RandomAI),
                 SecondPlayerAIMode::Perfect => {
-                    Box::new(BruteForceAI::new(22, self.rerender_board_callback.clone()))
+                    Box::new(BruteForceAI::new(15, self.rerender_board_callback.clone()))
                 }
             },
             ai_color: DiskColor::P2,
