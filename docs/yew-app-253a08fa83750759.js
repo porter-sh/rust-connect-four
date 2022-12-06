@@ -878,19 +878,19 @@ function getImports() {
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_closure_wrapper332 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 131, __wbg_adapter_34);
+        const ret = makeMutClosure(arg0, arg1, 130, __wbg_adapter_34);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_closure_wrapper1174 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 553, __wbg_adapter_37);
+        const ret = makeMutClosure(arg0, arg1, 554, __wbg_adapter_37);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_closure_wrapper1385 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 645, __wbg_adapter_40);
+        const ret = makeMutClosure(arg0, arg1, 646, __wbg_adapter_40);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_closure_wrapper1430 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_43);
+        const ret = makeMutClosure(arg0, arg1, 667, __wbg_adapter_43);
         return addHeapObject(ret);
     };
 
@@ -929,7 +929,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = new URL('yew-app-d09f93c695619c8d_bg.wasm', import.meta.url);
+        input = new URL('yew-app-253a08fa83750759_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 

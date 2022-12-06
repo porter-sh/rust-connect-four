@@ -127,7 +127,14 @@ impl Board {
 
     fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
         let path = location.path();
-        gloo::console::log!(path);
+        gloo::console::log!(format!("Path: {}", path));
+        gloo::console::log!(format!("/local-multiplayer: {:?},\n /local-multiplayer/: {:?},\n /rust-connect-four/local-multiplayer: {:?},\n /rust-connect-four/local-multiplayer/: {:?},\n rust-connect-four/local-multiplayer: {:?},\n rust-connect-four/local-multiplayer/: {:?}",
+            Route::recognize("/local-multiplayer").unwrap(),
+            Route::recognize("/local-multiplayer/").unwrap(),
+            Route::recognize("/rust-connect-four/local-multiplayer").unwrap(),
+            Route::recognize("/rust-connect-four/local-multiplayer/").unwrap(),
+            Route::recognize("rust-connect-four/local-multiplayer").unwrap(),
+            Route::recognize("rust-connect-four/local-multiplayer/").unwrap()));
         if let Some(route) = Route::recognize(path) {
             gloo::console::log!(format!("{:?}", route));
             match route {
