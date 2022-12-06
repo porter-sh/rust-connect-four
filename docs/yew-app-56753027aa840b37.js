@@ -877,37 +877,20 @@ function getImports() {
         const ret = wasm.memory;
         return addHeapObject(ret);
     };
-<<<<<<<< HEAD:docs/yew-app-253a08fa83750759.js
-    imports.wbg.__wbindgen_closure_wrapper332 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 130, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper580 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 307, __wbg_adapter_34);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1174 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 554, __wbg_adapter_37);
-        return addHeapObject(ret);
-    };
-    imports.wbg.__wbindgen_closure_wrapper1385 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 646, __wbg_adapter_40);
-        return addHeapObject(ret);
-    };
-    imports.wbg.__wbindgen_closure_wrapper1430 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 667, __wbg_adapter_43);
-========
-    imports.wbg.__wbindgen_closure_wrapper545 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 230, __wbg_adapter_34);
-        return addHeapObject(ret);
-    };
-    imports.wbg.__wbindgen_closure_wrapper999 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1002 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 513, __wbg_adapter_37);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1381 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1384 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 638, __wbg_adapter_40);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper1452 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1455 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 669, __wbg_adapter_43);
->>>>>>>> 22a512a0fb03c8cbfd83bc40a630a826efb07b88:docs/yew-app-105ab2c0c3fdb6c8.js
         return addHeapObject(ret);
     };
 
@@ -946,11 +929,7 @@ function initSync(module) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-<<<<<<<< HEAD:docs/yew-app-253a08fa83750759.js
-        input = new URL('yew-app-253a08fa83750759_bg.wasm', import.meta.url);
-========
-        input = new URL('yew-app-105ab2c0c3fdb6c8_bg.wasm', import.meta.url);
->>>>>>>> 22a512a0fb03c8cbfd83bc40a630a826efb07b88:docs/yew-app-105ab2c0c3fdb6c8.js
+        input = new URL('yew-app-56753027aa840b37_bg.wasm', import.meta.url);
     }
     const imports = getImports();
 
