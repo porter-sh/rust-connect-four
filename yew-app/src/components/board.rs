@@ -144,6 +144,7 @@ impl Board {
                 }
                 Route::VersusBot => {
                     if let Some(ai_route) = AIRoute::recognize(location.path()) {
+                        gloo::console::log!(format!("path: {}, ai_route: {:?}", path, ai_route));
                         match ai_route {
                             AIRoute::Random => {
                                 board.borrow_mut().init_ai(SecondPlayerAIMode::Random)
