@@ -33,7 +33,6 @@ use crate::{
     },
 };
 use constants::*;
-use gloo_utils::document;
 use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
@@ -136,12 +135,12 @@ impl Board {
             Route::recognize("rust-connect-four/local-multiplayer").unwrap(),
             Route::recognize("rust-connect-four/local-multiplayer/").unwrap()));
         gloo::console::log!(format!("Path: {}", path));
-        if let Ok(Some(base_uri)) = document().base_uri() {
-            gloo::console::log!(format!("Base URI: {}", base_uri.as_str()));
-            let new_path = path.strip_prefix(base_uri.as_str()).unwrap_or_default();
-            gloo::console::log!(new_path);
-            gloo::console::log!(format!("new_path: {:?}", Route::recognize(new_path)));
-        }
+        let new_path = path.strip_prefix("/rust-connect-four").unwrap_or_default();
+        gloo::console::log!(format!("new_path: {}", new_path));
+        gloo::console::log!(format!(
+            "new_path recognized: {:?}",
+            Route::recognize(new_path)
+        ));
         if let Some(route) = Route::recognize(path) {
             gloo::console::log!(format!("{:?}", route));
             match route {
