@@ -132,6 +132,12 @@ impl Board {
             .unwrap_or(location.path());
         if let Some(route) = Route::recognize(path) {
             gloo::console::log!(format!("path: {}, route: {:?}", path, route));
+            gloo::console::log!(format!(
+                "/versus-bot/random: {:?},\n /versus-bot/brute-force: {:?},\n /versus-bot: {:?}",
+                AIRoute::recognize("/versus-bot/random"),
+                AIRoute::recognize("/versus-bot/brute-force"),
+                AIRoute::recognize("/versus-bot")
+            ));
             match route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
