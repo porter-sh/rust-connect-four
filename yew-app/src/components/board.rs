@@ -135,6 +135,7 @@ impl Board {
                     // let query_string = location.search();
                     // let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
                     // board.borrow_mut().init_online(lobby.to_string());
+                    // let query = location.query();
                 }
                 Route::VersusBot => {
                     if let Some(ai_route) = AIRoute::recognize(location.path()) {
