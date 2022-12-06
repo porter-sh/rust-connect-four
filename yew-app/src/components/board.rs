@@ -108,6 +108,7 @@ impl Board {
             ctx.link()
                 .callback(|msg: GameUpdateMessage| BoardMessages::RerenderAndUpdateBoard(msg)),
         )));
+        Self::on_reroute(board_origin.clone(), ctx.link().location().unwrap());
         Self {
             board: Rc::clone(&board_origin),
             _location_handle: Self::get_location_handle(ctx, board_origin),
