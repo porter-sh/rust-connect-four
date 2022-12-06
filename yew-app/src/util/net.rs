@@ -141,7 +141,7 @@ fn spawn_writer_task(
         }
         // Forward messages sent by the main task to the server
         while let Some(msg) = receiver.recv().await {
-            log!(format!("Sent {:?}", msg));
+            log!(format!("Sent {:?} to the server.", msg));
             writer.send(Message::from(msg)).await.unwrap();
         }
         // If sender from the main task is dropped, we no longer need to stay connected to the server

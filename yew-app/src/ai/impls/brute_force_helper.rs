@@ -60,10 +60,6 @@ impl BruteForceAIHelper {
                 max = scores[col as usize];
             }
         }
-        // log!(
-        //     "Scores: ", scores[0], scores[1], scores[2], scores[3], scores[4], scores[5], scores[6]
-        // );
-        // if every column is filled
         if max == -100 {
             return 0;
         }
@@ -107,8 +103,6 @@ impl BruteForceAIHelper {
         for col in 0..(BOARD_WIDTH as u8) {
             if let Some(copy) = Self::place_disk_in_copy(board, col) {
                 if copy.check_last_drop_won() {
-                    // log!("Num moves into game: ", num_moves_into_game);
-                    // log!((BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8);
                     return (BOARD_HEIGHT * BOARD_WIDTH + 1) as i8 - num_moves_into_game as i8;
                 }
             }
@@ -167,7 +161,6 @@ impl BruteForceAIHelper {
         min_self_score: i8,
         min_opponent_score: i8,
     ) -> i8 {
-        // log!("Get Score Async.");
         self.get_score(
             board,
             num_moves_into_game,
@@ -179,7 +172,7 @@ impl BruteForceAIHelper {
 
     /// Returns which column the AI would drop a disk into.
     pub async fn get_move(&mut self, board: &Disks) -> u8 {
-        log!("move requested");
+        log!("Move requested from AI.");
         // start each column with a bad score
         let mut score = [-100; BOARD_WIDTH as usize];
         let num_moves_into_game = board.get_num_disks();
@@ -204,7 +197,6 @@ impl BruteForceAIHelper {
                 }
             }
         }
-        // log!(self.position_lookup_table.get_num_entries());
         // Chose any one of the best columns at random (if there are multiple).
         Self::random_move_from_scores(score)
     }

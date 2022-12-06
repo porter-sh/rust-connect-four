@@ -61,7 +61,6 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        // log!("Updating Board");
         if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
             self.board
                 .borrow_mut()
@@ -131,7 +130,6 @@ impl Board {
             .strip_prefix("/rust-connect-four")
             .unwrap_or(location.path());
         if let Some(route) = Route::recognize(path) {
-            gloo::console::log!(format!("path: {}, route: {:?}", path, route));
             match route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
@@ -143,7 +141,6 @@ impl Board {
                 }
                 Route::VersusBot => {
                     if let Some(ai_route) = AIRoute::recognize(path) {
-                        gloo::console::log!(format!("path: {}, ai_route: {:?}", path, ai_route));
                         match ai_route {
                             AIRoute::Random => {
                                 board.borrow_mut().init_ai(SecondPlayerAIMode::Random)
@@ -158,7 +155,6 @@ impl Board {
                     }
                 }
                 _ => {
-                    gloo::console::log!("in other");
                     let mut board = board.borrow_mut();
                     board.second_player_extension.remove_extension();
                     board.info_message = InfoMessage::NoMessage;

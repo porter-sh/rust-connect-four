@@ -177,7 +177,7 @@ impl BoardState {
 
     /// Handles all the board changes based on a message from the second player.
     pub fn update_state_from_second_player_message(&mut self, msg: GameUpdateMessage) {
-        log!(format!("Received {:?}", msg));
+        log!(format!("Received {:?} from second player.", msg));
         match msg {
             BoardStateMessage(update) => {
                 // if the message is a non-winning move, it will be the client's turn next, so they can move
