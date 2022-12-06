@@ -126,8 +126,12 @@ impl Board {
     }
 
     fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
-        gloo::console::log!(location.path());
-        if let Some(route) = Route::recognize(location.path()) {
+        let mut path = location.path();
+        if path.len() > 18 && &path[0..18] == "/rust-connect-four" {
+            path = &path[18..];
+        }
+        gloo::console::log!(path);
+        if let Some(route) = Route::recognize(path) {
             match route {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
