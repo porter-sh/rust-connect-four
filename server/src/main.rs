@@ -20,8 +20,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use constants::WEBSOCKET_ADDRESS;
-
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::mpsc::UnboundedSender,
@@ -51,8 +49,7 @@ async fn main() -> std::io::Result<()> {
     #[cfg(not(feature = "cppintegration"))]
     println!("C++ integration disabled.");
 
-    // WEBSOCKET_ADDRESS[0..5] = "ws://", which should not be passed to TcpListener::bind(...)
-    let listener = TcpListener::bind(&WEBSOCKET_ADDRESS[5..]).await?;
+    let listener = TcpListener::bind("172.31.36.17:8080").await?;
     // "Global" storage of the lobbies in existence
     let lobbies = Arc::new(Mutex::new(Lobbies::new()));
 

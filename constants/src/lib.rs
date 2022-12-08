@@ -21,7 +21,6 @@
 
 pub const BOARD_HEIGHT: u8 = 6; // number of rows in the board
 pub const BOARD_WIDTH: u8 = 7; // number of columns in the board
-pub const WEBSOCKET_ADDRESS: &str = "ws://18.117.217.156";
 pub const LOOKUP_TABLE_SIZE: usize = 1000; // 1000 should be slightly more than 64 MB
 
 /// Helper enum like struct to provide some communication standards between the client and server
