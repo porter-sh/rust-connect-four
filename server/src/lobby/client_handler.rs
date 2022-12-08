@@ -36,15 +36,21 @@ use futures::{
     SinkExt, StreamExt,
 };
 use tokio::{
+    io::{split, AsyncWriteExt, WriteHalf},
+    net::TcpStream,
     sync::{
         broadcast::{Receiver as BroadcastReceiver, Sender as BroadcastSender},
         mpsc::{UnboundedReceiver, UnboundedSender},
     },
     task::{self, JoinHandle},
 };
+use tokio_rustls::server::TlsStream;
 use tokio_tungstenite::tungstenite::Message::{self as WebSocketMessage, Binary};
 
-use std::sync::{Arc, Mutex};
+use std::{
+    net::TcpListener,
+    sync::{Arc, Mutex},
+};
 
 /// new_client_handler spawns tasks to read and write data over websockets to clients and to communicate with the main lobby task
 /// It also tells clients whether they are playing (and as which player) or spectating
@@ -57,8 +63,8 @@ pub async fn new_client_handler(
     subtasks: Arc<Mutex<Subtasks>>,
 ) {
     // Receive new clients sent to the lobby
-    while let Some(client) = new_client_receiver.recv().await {
-        let (mut writer, reader) = client.split();
+    while let Some(stream) = new_client_receiver.recv().await {
+        let (mut reader, writer) = split(stream);
 
         task::block_in_place(|| {
             let mut subtasks = subtasks.lock().unwrap();
@@ -80,16 +86,10 @@ pub async fn new_client_handler(
             let last_board_state = subtasks.last_board_state.clone();
             let client_task = task::spawn(async move {
                 // Send to the client which player it is, or if it is a spectator
-                writer
-                    .send(Binary(vec![client_type]))
-                    .await
-                    .unwrap_or_default();
+                writer.write(&[client_type]).await.unwrap_or_default();
                 if subtasks_len != 0 {
                     // Send the current board state to the client
-                    writer
-                        .send(Binary(last_board_state))
-                        .await
-                        .unwrap_or_default();
+                    writer.write(&last_board_state).await.unwrap_or_default();
                 }
                 // Write to the client on game update
                 client_writer(writer, game_update_receiver, player_num).await;
@@ -205,7 +205,7 @@ async fn spectator_listener(mut client: SplitStream<Client>, client_task: JoinHa
 /// Async to be run as a new task whenever a spectator joins the lobby
 /// One task per client due to awaiting the send over a websocket
 async fn client_writer(
-    mut client: SplitSink<Client, WebSocketMessage>,
+    mut client_writehalf: WriteHalf<TlsStream<TcpStream>>,
     mut receiver: BroadcastReceiver<MessageFromClient>,
     player_num: u8,
 ) {
@@ -213,7 +213,7 @@ async fn client_writer(
     while let Ok(msg) = receiver.recv().await {
         // If this message did not come from this client, send it to the client
         if msg.player_num != player_num {
-            if let Err(_) = client.send(Binary(msg.binary)).await {
+            if let Err(_) = client_writehalf.write(&msg.binary).await {
                 break;
             }
         }

@@ -24,13 +24,21 @@
 use constants::ConnectionProtocol;
 
 use futures::{SinkExt, StreamExt};
-use tokio::{net::TcpStream, task};
+use tokio::{
+    io::{copy, split, AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+    task,
+};
+use tokio_rustls::TlsAcceptor;
 use tokio_tungstenite::tungstenite::{
     error::Error,
     Message::{Binary, Text},
 };
 
-use std::sync::{Arc, Mutex};
+use std::{
+    str::from_utf8,
+    sync::{Arc, Mutex},
+};
 
 use crate::{lobby::lobby, Lobbies};
 
@@ -39,11 +47,14 @@ use crate::{lobby::lobby, Lobbies};
 ///
 /// Async to be run as a new task whenever a connection is established
 pub async fn handle_connection(
+    acceptor: TlsAcceptor,
     incoming: TcpStream,
     lobbies: Arc<Mutex<Lobbies>>,
 ) -> Result<(), Error> {
     // Accept the websocket request
-    let mut client = tokio_tungstenite::accept_async(incoming).await?;
+    // let mut client = tokio_tungstenite::accept_async(incoming).await?;
+    let mut stream = acceptor.accept(incoming).await?;
+    // let (mut reader, mut writer) = split(stream);
 
     // Confirm (besides the websocket handshake) the connection was successful
     // Length of the confirmation message indicated what type of message the client should send to the server
@@ -52,21 +63,26 @@ pub async fn handle_connection(
         .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS]))
         .await?;
     #[cfg(not(feature = "cppintegration"))]
-    client
-        .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS, 0]))
+    // client
+    //     .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS, 0]))
+    //     .await?;
+    stream
+        .write(&[ConnectionProtocol::CONNECTION_SUCCESS, 0])
         .await?;
 
     // Get the lobby name from the client and place the client into the desired lobby
-    let msg = client.next().await.unwrap_or(Err(Error::AlreadyClosed))?;
+    //let msg = client.next().await.unwrap_or(Err(Error::AlreadyClosed))?;
+    let mut msg_buf = [0u8; 16];
+    stream.read(&mut msg_buf).await?;
     println!("Received msg from client.");
-    if let Text(lobby) = msg {
-        println!("{}", lobby);
+    if let Ok(lobby) = from_utf8(&msg_buf).map(|s| s.to_string()) {
+        println!("Lobby: {}", lobby);
         task::block_in_place(move || {
             let lobby_name = lobby.clone();
             if let Ok(mut lobbies_map) = lobbies.lock() {
                 // Send the player to the lobby if it already exists
                 if let Some(sender) = lobbies_map.get(&lobby) {
-                    sender.send(client).unwrap_or_default();
+                    sender.send(stream).unwrap_or_default();
                     if lobby == "".to_string() {
                         lobbies_map.remove(&lobby);
                     }
@@ -80,7 +96,7 @@ pub async fn handle_connection(
                     }));
                     lobbies_map.insert(lobby, new_client_sender.clone());
                     // Send the player to the new lobby
-                    new_client_sender.send(client).unwrap_or_default();
+                    new_client_sender.send(stream).unwrap_or_default();
                     println!("Created lobby.");
                 }
             }
