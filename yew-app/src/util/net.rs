@@ -18,7 +18,7 @@
  */
 
 use crate::util::util::GameUpdateMessage::{self, BoardState, SimpleMessage, UndoMove};
-use constants::{ConnectionProtocol, WEBSOCKET_ADDRESS};
+use constants::ConnectionProtocol;
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
@@ -60,7 +60,7 @@ pub fn spawn_connection_tasks(
     lobby: String,
 ) -> Result<(UnboundedSender<GameUpdateMessage>, Rc<RefCell<bool>>), JsError> {
     // Task communication with server
-    let websocket = WebSocket::open(WEBSOCKET_ADDRESS)?;
+    let websocket = WebSocket::open("ws://3.15.107.128:8080")?;
     let (writer, reader) = websocket.split();
     // Main app communication with tasks
     let (sender, receiver) = mpsc::unbounded_channel();
