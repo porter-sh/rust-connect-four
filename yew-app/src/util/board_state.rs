@@ -206,17 +206,14 @@ impl BoardState {
                 match msg {
                     ConnectionProtocol::IS_PLAYER_1 => {
                         self.current_player = DiskColor::P1;
-                        self.can_move = false;
                         self.info_message = InfoMessage::WaitingForOpponent;
                     }
                     ConnectionProtocol::IS_PLAYER_2 => {
                         self.current_player = DiskColor::P2;
-                        self.can_move = false;
                         self.info_message = InfoMessage::P1Turn;
                     }
                     ConnectionProtocol::IS_SPECTATOR => {
                         self.current_player = DiskColor::Empty;
-                        self.can_move = false;
                         // accounts for the fact that the spectator does not join at the beginning of the game.
                         if self.num_moves % 2 == 0 {
                             self.info_message = InfoMessage::P1Turn;
@@ -250,6 +247,7 @@ impl BoardState {
     /// Resets the board, and requests a server connection.
     pub fn init_online(&mut self, lobby: String) {
         self.reset(); // reset board data
+        self.can_move = false;
         self.info_message = InfoMessage::Connecting;
         self.second_player_extension.init_online(lobby); // set the second player to be online
         if self.second_player_extension.mode == SecondPlayerExtensionMode::None {

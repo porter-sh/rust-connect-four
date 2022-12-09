@@ -21,7 +21,6 @@
  */
 
 use argh::FromArgs;
-use rustls::{Certificate, PrivateKey};
 use rustls_pemfile::{certs, rsa_private_keys};
 use std::{
     collections::HashMap,
@@ -35,8 +34,11 @@ use tokio::{
     net::{TcpListener, TcpStream},
     sync::mpsc::UnboundedSender,
 };
-use tokio_rustls::{server::TlsStream, TlsAcceptor};
-use tokio_tungstenite::WebSocketStream;
+use tokio_rustls::{
+    rustls::{self, Certificate, PrivateKey},
+    server::TlsStream,
+    TlsAcceptor,
+};
 
 #[cfg(feature = "cppintegration")]
 mod bindings;
@@ -65,13 +67,13 @@ struct CLIOptions {
 fn load_certs(path: &Path) -> io::Result<Vec<Certificate>> {
     certs(&mut BufReader::new(File::open(path)?))
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))
-        .map(|mut certs| certs.into_iter().map(Certificate).collect())
+        .map(|certs| certs.into_iter().map(Certificate).collect())
 }
 
 fn load_keys(path: &Path) -> io::Result<Vec<PrivateKey>> {
     rsa_private_keys(&mut BufReader::new(File::open(path)?))
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))
-        .map(|mut keys| keys.into_iter().map(PrivateKey).collect())
+        .map(|keys| keys.into_iter().map(PrivateKey).collect())
 }
 
 /// Main loop: listens for connection requests, and creates a task to handle each requests
@@ -83,23 +85,35 @@ async fn main() -> std::io::Result<()> {
     #[cfg(not(feature = "cppintegration"))]
     println!("C++ integration disabled.");
 
-    let cli_options: CLIOptions = argh::from_env();
-    let address = cli_options
-        .address
-        .to_socket_addrs()?
-        .next()
-        .ok_or_else(|| io::Error::from(io::ErrorKind::AddrNotAvailable))?;
-    let certificates = load_certs(&cli_options.certificate)?;
-    let mut keys = load_keys(&cli_options.key)?;
+    #[cfg(feature = "use-certificate")]
+    let (address, acceptor) = {
+        let cli_options: CLIOptions = argh::from_env();
+        let address = cli_options
+            .address
+            .to_socket_addrs()?
+            .next()
+            .ok_or_else(|| io::Error::from(io::ErrorKind::AddrNotAvailable))?;
+        let certificates = load_certs(&cli_options.certificate)?;
+        let mut keys = load_keys(&cli_options.key)?;
+        println!(
+            "Successfully loaded {} certificates and {} keys.",
+            certificates.len(),
+            keys.len()
+        );
 
-    let config = rustls::ServerConfig::builder()
-        .with_safe_defaults()
-        .with_no_client_auth()
-        .with_single_cert(certificates, keys.remove(0))
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
-    let acceptor = TlsAcceptor::from(Arc::new(config));
+        let config = rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certificates, keys.remove(0))
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
+        (address, TlsAcceptor::from(Arc::new(config)))
+    };
+
+    #[cfg(not(feature = "use-certificate"))]
+    let address = "127.0.0.1:8081";
 
     let listener = TcpListener::bind(&address).await?;
+    println!("Listening on {}", address);
 
     // "Global" storage of the lobbies in existence
     let lobbies = Arc::new(Mutex::new(Lobbies::new()));
@@ -109,10 +123,11 @@ async fn main() -> std::io::Result<()> {
         let (incoming, _) = listener.accept().await?;
         // Handle the request
         let lobbies = Arc::clone(&lobbies);
+        #[cfg(feature = "use-certificate")]
+        let acceptor_clone = acceptor.clone();
         tokio::spawn(async move {
-            if let Err(_) = connection::handle_connection(acceptor.clone(), incoming, lobbies).await
-            {
-                println!("Client failed to connect.");
+            if let Err(e) = connection::handle_connection(acceptor_clone, incoming, lobbies).await {
+                println!("Client failed to connect with {}", e);
             }
         });
     }

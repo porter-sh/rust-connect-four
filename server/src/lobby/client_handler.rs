@@ -31,12 +31,8 @@ use super::util::Message::{self, BoardState, SpecialMessage};
 
 use constants::ConnectionProtocol;
 
-use futures::{
-    stream::{SplitSink, SplitStream},
-    SinkExt, StreamExt,
-};
 use tokio::{
-    io::{split, AsyncWriteExt, WriteHalf},
+    io::{split, AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
     net::TcpStream,
     sync::{
         broadcast::{Receiver as BroadcastReceiver, Sender as BroadcastSender},
@@ -45,12 +41,8 @@ use tokio::{
     task::{self, JoinHandle},
 };
 use tokio_rustls::server::TlsStream;
-use tokio_tungstenite::tungstenite::Message::{self as WebSocketMessage, Binary};
 
-use std::{
-    net::TcpListener,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 /// new_client_handler spawns tasks to read and write data over websockets to clients and to communicate with the main lobby task
 /// It also tells clients whether they are playing (and as which player) or spectating
@@ -64,7 +56,7 @@ pub async fn new_client_handler(
 ) {
     // Receive new clients sent to the lobby
     while let Some(stream) = new_client_receiver.recv().await {
-        let (mut reader, writer) = split(stream);
+        let (reader, mut writer) = split(stream);
 
         task::block_in_place(|| {
             let mut subtasks = subtasks.lock().unwrap();
@@ -132,39 +124,40 @@ pub async fn new_client_handler(
 ///
 /// Async to be run as a new task whenever a player joins the lobby
 async fn player_listener(
-    mut client: SplitStream<Client>,
+    mut client_readhalf: ReadHalf<TlsStream<TcpStream>>,
     sender: UnboundedSender<Message>,
     player_num: u8,
 ) {
     // Read in new messages from the client
-    while let Some(Ok(msg)) = client.next().await {
-        if let Binary(binary) = msg {
-            // Forward the message to the main lobby task
-            #[cfg(feature = "cppintegration")]
-            if binary.len() == 1 && binary[0] != ConnectionProtocol::SECOND_PLAYER_CONNECTED {
-                sender
-                    .send(MessageFromClient { binary, player_num })
-                    .unwrap_or_default();
-            } else {
-                println!("Player sent unrecognized message.");
-                break;
-            }
-
-            #[cfg(not(feature = "cppintegration"))]
-            if binary.len() == 1 {
-                sender.send(SpecialMessage(binary[0])).unwrap_or_default();
-            } else if binary.len() == ConnectionProtocol::MESSAGE_SIZE {
-                sender
-                    .send(BoardState(MessageFromClient { binary, player_num }))
-                    .unwrap_or_default();
-            } else {
-                println!("Player sent unrecognized message.");
-                break;
-            }
+    let mut msg_buf = [0u8; ConnectionProtocol::MESSAGE_SIZE];
+    while let Ok(read_size) = client_readhalf.read(&mut msg_buf).await {
+        // Forward the message to the main lobby task
+        #[cfg(feature = "cppintegration")]
+        if binary.len() == 1 && binary[0] != ConnectionProtocol::SECOND_PLAYER_CONNECTED {
+            sender
+                .send(MessageFromClient { binary, player_num })
+                .unwrap_or_default();
         } else {
             println!("Player sent unrecognized message.");
             break;
         }
+
+        #[cfg(not(feature = "cppintegration"))]
+        if read_size == 1 {
+            sender.send(SpecialMessage(msg_buf[0])).unwrap_or_default();
+        } else if read_size == ConnectionProtocol::MESSAGE_SIZE {
+            sender
+                .send(BoardState(MessageFromClient {
+                    binary: msg_buf.to_vec(),
+                    player_num,
+                }))
+                .unwrap_or_default();
+        } else {
+            println!("Player sent unrecognized message.");
+            break;
+        }
+
+        msg_buf = [0u8; ConnectionProtocol::MESSAGE_SIZE];
     }
 
     // Tell the main lobby task to kill the lobby: the player left so the game is now over
@@ -185,14 +178,17 @@ async fn player_listener(
 /// spectator_listener kills the respective writer task (to save on resources) whenever a spectator leaves
 ///
 /// Async to be run as a new task whenever a spectator joins the lobby
-async fn spectator_listener(mut client: SplitStream<Client>, client_task: JoinHandle<()>) {
+async fn spectator_listener(
+    mut client_readhalf: ReadHalf<TlsStream<TcpStream>>,
+    client_task: JoinHandle<()>,
+) {
     // When a message is received, check if it the spectator is killing the connection
-    while let Some(Ok(msg)) = client.next().await {
-        if let Binary(msg) = msg {
-            if msg.len() == 1 && msg[0] == ConnectionProtocol::KILL_CONNECTION {
-                break;
-            }
+    let mut msg_buf = [0u8; 2];
+    while let Ok(read_size) = client_readhalf.read(&mut msg_buf).await {
+        if read_size == 1 && msg_buf[0] == ConnectionProtocol::KILL_CONNECTION {
+            break;
         }
+        msg_buf = [0u8; 2];
     }
 
     // Kill the corresponding writer task

@@ -23,17 +23,13 @@
 
 use constants::ConnectionProtocol;
 
-use futures::{SinkExt, StreamExt};
 use tokio::{
-    io::{copy, split, AsyncReadExt, AsyncWriteExt},
+    io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     task,
 };
 use tokio_rustls::TlsAcceptor;
-use tokio_tungstenite::tungstenite::{
-    error::Error,
-    Message::{Binary, Text},
-};
+use tokio_tungstenite::tungstenite::error::Error;
 
 use std::{
     str::from_utf8,

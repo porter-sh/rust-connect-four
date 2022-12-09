@@ -6,18 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = [] # "cppintegration"]
+default = ["use-certificate"] # "cppintegration"]
 cppintegration = []
+use-certificate = ["argh", "tokio-rustls", "rustls-pemfile"]
 
 [dependencies]
 constants = { path = "../constants" }
 futures = "0.3.25"
 tokio = { version = "1.22.0", features = ["macros", "net", "rt-multi-thread", "sync"] }
-tokio-rustls = "0.23.4"
+tokio-rustls = { version = "0.23.4", optional = true }
 tokio-tungstenite = "0.17.2" # { version = "0.17.2", features = ["tls"]}
-argh = "0.1.9"
-rustls = "0.20.7"
-rustls-pemfile = "1.0.1"
+argh = { version = "0.1.9", optional = true }
+rustls-pemfile = { version = "1.0.1", optional = true }
 
 # [build-dependencies]
 # cc = "1.0.76"

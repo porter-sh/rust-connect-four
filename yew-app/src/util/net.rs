@@ -60,7 +60,7 @@ pub fn spawn_connection_tasks(
     lobby: String,
 ) -> Result<(UnboundedSender<GameUpdateMessage>, Rc<RefCell<bool>>), JsError> {
     // Task communication with server
-    let websocket = WebSocket::open("ws://3.15.107.128:8080")?;
+    let websocket = WebSocket::open("wss://127.0.0.1:443")?;
     let (writer, reader) = websocket.split();
     // Main app communication with tasks
     let (sender, receiver) = mpsc::unbounded_channel();
