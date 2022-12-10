@@ -24,33 +24,51 @@
 use constants::ConnectionProtocol;
 
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
     task,
 };
-use tokio_rustls::TlsAcceptor;
+
+#[cfg(feature = "use-certificate")]
+use {
+    tokio::io::{AsyncReadExt, AsyncWriteExt},
+    tokio_rustls::TlsAcceptor,
+    std::str::from_utf8,
+};
+#[cfg(not(feature = "use-certificate"))]
+use tokio_tunstenite::tungstenite::Message::{Binary, Text};
 use tokio_tungstenite::tungstenite::error::Error;
 
-use std::{
-    str::from_utf8,
-    sync::{Arc, Mutex},
-};
+#[cfg(not(feature = "use-certificate"))]
+use futures::{SinkExt, StreamExt};
+
+use std::sync::{Arc, Mutex};
 
 use crate::{lobby::lobby, Lobbies};
+
+#[cfg(feature = "use-certificate")]
+type Args = (TlsAcceptor, TcpStream, Arc<Mutex<Lobbies>>);
+#[cfg(not(feature = "use-certificate"))]
+type Args = (TcpStream, Arc<Mutex<Lobbies>>);
 
 /// Takes a websocket request, tells the client the connection was successful,
 /// and places the client into the desired lobby
 ///
 /// Async to be run as a new task whenever a connection is established
 pub async fn handle_connection(
-    acceptor: TlsAcceptor,
-    incoming: TcpStream,
-    lobbies: Arc<Mutex<Lobbies>>,
+    args: Args
 ) -> Result<(), Error> {
+
+    #[cfg(feature = "use-certificate")]
+    let (acceptor, incoming, lobbies) = args;
+    #[cfg(not(feature = "use-certificate"))]
+    let (incoming, lobbies) = args;
+
     // Accept the websocket request
-    // let mut client = tokio_tungstenite::accept_async(incoming).await?;
-    let mut stream = acceptor.accept(incoming).await?;
+    #[cfg(feature = "use-certificate")]
+    let mut client = acceptor.accept(incoming).await?;
     // let (mut reader, mut writer) = split(stream);
+    #[cfg(not(feature = "use-certificate"))]
+    let mut client = tokio_tungstenite::accept_async(incoming).await?;
 
     // Confirm (besides the websocket handshake) the connection was successful
     // Length of the confirmation message indicated what type of message the client should send to the server
@@ -59,26 +77,45 @@ pub async fn handle_connection(
         .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS]))
         .await?;
     #[cfg(not(feature = "cppintegration"))]
-    // client
-    //     .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS, 0]))
-    //     .await?;
-    stream
-        .write(&[ConnectionProtocol::CONNECTION_SUCCESS, 0])
-        .await?;
+    {
+        #[cfg(feature = "use-certificate")]
+        client
+            .write(&[ConnectionProtocol::CONNECTION_SUCCESS, 0])
+            .await?;
+        #[cfg(not(feature = "use-certificate"))]
+        client
+            .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS, 0]))
+            .await?;
+    }
 
     // Get the lobby name from the client and place the client into the desired lobby
-    //let msg = client.next().await.unwrap_or(Err(Error::AlreadyClosed))?;
-    let mut msg_buf = [0u8; 16];
-    stream.read(&mut msg_buf).await?;
+    #[cfg(feature = "use-certificate")]
+    let client_res = {
+        let mut msg_buf = [0u8; 16];
+        client.read(&mut msg_buf).await?;
+        from_utf8(&msg_buf).map(|s| s.to_string())
+    };
+    #[cfg(not(feature = "use-certificate"))]
+    let client_res = {
+        match client.next().await.unwrap_or(Err(Error::AlreadyClosed))? {
+            Text(msg) => Ok(msg),
+            _ => Err(())
+        }
+    };
+
+
     println!("Received msg from client.");
-    if let Ok(lobby) = from_utf8(&msg_buf).map(|s| s.to_string()) {
+
+
+
+    if let Ok(lobby) = client_res {
         println!("Lobby: {}", lobby);
         task::block_in_place(move || {
             let lobby_name = lobby.clone();
             if let Ok(mut lobbies_map) = lobbies.lock() {
                 // Send the player to the lobby if it already exists
                 if let Some(sender) = lobbies_map.get(&lobby) {
-                    sender.send(stream).unwrap_or_default();
+                    sender.send(client).unwrap_or_default();
                     if lobby == "".to_string() {
                         lobbies_map.remove(&lobby);
                     }
@@ -92,7 +129,7 @@ pub async fn handle_connection(
                     }));
                     lobbies_map.insert(lobby, new_client_sender.clone());
                     // Send the player to the new lobby
-                    new_client_sender.send(stream).unwrap_or_default();
+                    new_client_sender.send(client).unwrap_or_default();
                     println!("Created lobby.");
                 }
             }

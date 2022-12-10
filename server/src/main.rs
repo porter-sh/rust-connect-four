@@ -20,35 +20,46 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use argh::FromArgs;
-use rustls_pemfile::{certs, rsa_private_keys};
+#[cfg(feature = "use-certificate")]
+use {
+    argh::FromArgs,
+    rustls_pemfile::{certs, rsa_private_keys},
+    tokio_rustls::{
+        rustls::{self, Certificate, PrivateKey},
+        server::TlsStream,
+        TlsAcceptor,
+    },
+    std::{
+        fs::File,
+        io::{self, BufReader},
+        net::ToSocketAddrs,
+        path::{Path, PathBuf},
+    }
+};
 use std::{
     collections::HashMap,
-    fs::File,
-    io::{self, BufReader},
-    net::ToSocketAddrs,
-    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::mpsc::UnboundedSender,
 };
-use tokio_rustls::{
-    rustls::{self, Certificate, PrivateKey},
-    server::TlsStream,
-    TlsAcceptor,
-};
+#[cfg(not(feature = "use-certificate"))]
+use tokio_tungstenite::WebSocketStream;
 
 #[cfg(feature = "cppintegration")]
 mod bindings;
 mod connection;
 mod lobby;
 
+#[cfg(feature = "use-certificate")]
 type Client = TlsStream<TcpStream>;
+#[cfg(not(feature = "use-certificate"))]
+type Client = WebSocketStream<TcpStream>;
 type Lobbies = HashMap<String, UnboundedSender<Client>>;
 
 /// Command line options
+#[cfg(feature = "use-certificate")]
 #[derive(FromArgs)]
 struct CLIOptions {
     /// address to bind to
@@ -64,12 +75,14 @@ struct CLIOptions {
     key: PathBuf,
 }
 
+#[cfg(feature = "use-certificate")]
 fn load_certs(path: &Path) -> io::Result<Vec<Certificate>> {
     certs(&mut BufReader::new(File::open(path)?))
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))
         .map(|certs| certs.into_iter().map(Certificate).collect())
 }
 
+#[cfg(feature = "use-certificate")]
 fn load_keys(path: &Path) -> io::Result<Vec<PrivateKey>> {
     rsa_private_keys(&mut BufReader::new(File::open(path)?))
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))
@@ -125,8 +138,12 @@ async fn main() -> std::io::Result<()> {
         let lobbies = Arc::clone(&lobbies);
         #[cfg(feature = "use-certificate")]
         let acceptor_clone = acceptor.clone();
+        #[cfg(feature = "use-certificate")]
+        let args = (acceptor_clone, incoming, lobbies);
+        #[cfg(not(feature = "use-certificate"))]
+        let args = (incoming, lobbies);
         tokio::spawn(async move {
-            if let Err(e) = connection::handle_connection(acceptor_clone, incoming, lobbies).await {
+            if let Err(e) = connection::handle_connection(args).await {
                 println!("Client failed to connect with {}", e);
             }
         });
