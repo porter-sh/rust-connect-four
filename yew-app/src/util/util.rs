@@ -26,6 +26,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 /// Enum to store the state at a particular board space
 /// Either Empty or the corresponding player who has a disk in that spot
+/// Can also be used to track which player a client is
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DiskColor {
     Empty,
@@ -37,7 +38,7 @@ impl DiskColor {
     /// Switches from P1 to P2 and vice versa
     pub fn opposite(&self) -> DiskColor {
         match self {
-            DiskColor::Empty => DiskColor::Empty,
+            DiskColor::Empty => DiskColor::Empty, // spectating
             DiskColor::P1 => DiskColor::P2,
             DiskColor::P2 => DiskColor::P1,
         }
@@ -64,12 +65,12 @@ pub enum RequestMoveResult {
 /// Enum that represents an AI implementation to use
 pub enum SecondPlayerAIMode {
     Random,
-    Perfect,
+    BruteForce,
 }
 
 /// Enum that represents a SurvivalAI implementation to use
 pub enum SecondPlayerSurvivalAIMode {
-    Perfect,
+    BruteForce,
 }
 
 /// Enum to store different kinds of second players

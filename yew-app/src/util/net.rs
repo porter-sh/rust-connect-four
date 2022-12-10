@@ -1,3 +1,6 @@
+//! Contains spawn_connection_tasks, which spawns tasks to connect with the server,
+//! and returns a sender to send in game updates (which are then sent to the server)
+
 /*
  * This file is part of Rust-Connect-Four
  * Copyright (C) 2022 Alexander Broihier <alexanderbroihier@gmail.com>
@@ -67,6 +70,7 @@ pub fn spawn_connection_tasks(
     // Channel to tell the writer task when to send the lobby information to the server
     let (connection_est_sender, connection_est_receiver) = oneshot::channel();
 
+    // Track how the server wants clients to send in updates
     let send_update_as_col_num = Rc::new(RefCell::new(false));
 
     spawn_reader_task(
@@ -93,7 +97,7 @@ fn spawn_reader_task(
         if let Some(Ok(msg)) = reader.next().await {
             if let Bytes(bytes) = msg {
                 if bytes.len() != 0 && bytes[0] == ConnectionProtocol::CONNECTION_SUCCESS {
-                    if bytes.len() == 1 {
+                    if bytes.len() == 1 { // Determine and store how server wants clients to send updates
                         *send_update_as_col_num.borrow_mut() = true;
                     }
                     // Tell the writer task to send to the server the lobby name
@@ -119,11 +123,13 @@ fn spawn_reader_task(
             }
         }
         log!("Exiting reader thread.");
+        // Update board that read connection was lost
         callback.emit(SimpleMessage(ConnectionProtocol::CONNECTION_FAILURE));
     });
 }
 
 /// Task to write data to the server
+/// Writes data sent from the sender stored by the second player extension
 fn spawn_writer_task(
     mut writer: SplitSink<WebSocket, Message>,
     mut receiver: UnboundedReceiver<GameUpdateMessage>,

@@ -74,6 +74,7 @@ pub enum Route {
     NotFoundNeedsRedirect, // force URL to show 404 (rather than the typed URL) for not found pages
 }
 
+/// Enum containing nested routes for AI gamemodes
 #[derive(Clone, Routable, PartialEq, Debug)]
 pub enum AIRoute {
     #[at("/versus-bot/random")]

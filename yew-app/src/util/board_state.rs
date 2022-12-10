@@ -38,6 +38,7 @@ use gloo::console::log;
 
 use super::util::SecondPlayerExtensionMode;
 
+/// Enum to help track state changes for determining the info message
 #[derive(PartialEq)]
 enum UpdateInfoMessageVariant {
     GameWon,
@@ -89,30 +90,16 @@ impl BoardState {
         self.info_message = InfoMessage::P1Turn;
     }
 
-    /// Does everything required for the next player to make a move in the given column.
-    pub fn make_move(&mut self, col: u8) -> Result<(), String> {
-        self.disks.drop_disk(col)?;
-        let game_won = self.update_can_move_if_won();
-        self.update_player_if_not_online();
-        self.update_game_history(col);
-        self.update_info_message(if game_won {
-            UpdateInfoMessageVariant::GameWon
-        } else {
-            UpdateInfoMessageVariant::None
-        });
-        Ok(())
-    }
-
     /// Given the desired move of the current player, update the board state. If
     /// there is a second player extension, send the move to the second player
     /// however the second player needs to receive the move. If there is not a
     /// second player, set up the game state to be ready for the second local
     /// player to take a turn.
     /// Additionally, if if there is a second player extension, request their
-    /// move (NON-BLOCKING), then let the board wait for a response in the form
-    /// of a callback.
-    /// Returns Result of whether the second player extension will eventually
-    /// call back with a move.
+    /// move, then either let the board wait for a response in the form
+    /// of a callback or make the immediately returned move.
+    /// Returns Result of whether the a valid move was made and if second player extension will eventually
+    /// call back with a move or has already made a move.
     pub fn make_move_and_handoff_to_second_player(
         &mut self,
         selected_col: u8,
@@ -132,15 +119,15 @@ impl BoardState {
         }
     }
 
-    /// Undo the last move and sends a message to the second player.
+    /// Undo the last move and sends an update to the second player.
     pub fn undo_move_and_handoff_to_second_player(&mut self) {
-        // At the start of the game
+        // At the start of the game, nothing to do
         if self.num_moves == 0 {
             return;
         }
 
         if !self.second_player_extension.is_online_player() {
-            // Revert to previous player
+            // Revert to previous player, switch player and AI colors if playing an AI
             self.current_player = self.current_player.opposite();
             self.second_player_extension
                 .switch_ai_color_if_ai_or_survival(if self.num_moves % 2 == 0 {
@@ -157,18 +144,21 @@ impl BoardState {
         self.disks.rm_disk_from_col(col); // Remove the disk from the columns
         self.update_info_message(UpdateInfoMessageVariant::Undo);
         self.handoff_to_second_player(ConnectionProtocol::UNDO)
-            .unwrap_or_default();
+            .unwrap_or_default(); // Update the second player
     }
 
     /// Returns a result of whether the second player extension will eventually
-    /// call back with a move.
+    /// call back with a move or has already made a move.
     pub fn handoff_to_second_player(&mut self, selected_col: u8) -> Result<(), String> {
+        // Send the update, along with a reference the the current board state
         let res = self
             .second_player_extension
             .request_move(selected_col, self)?;
+        // If the second player will callback with a move, block the player from making moves
         if selected_col != ConnectionProtocol::UNDO && res == RequestMoveResult::WillRerenderLater {
             self.can_move = false;
         }
+        // If the second player replied with a move, make the move
         if let RequestMoveResult::RerenderNow(col) = res {
             self.update_state_from_second_player_message(SimpleMessage(col));
         }
@@ -182,7 +172,7 @@ impl BoardState {
             BoardStateMessage(update) => {
                 // if the message is a non-winning move, it will be the client's turn next, so they can move
                 if !update.game_won {
-                    if self.current_player != DiskColor::Empty {
+                    if self.current_player != DiskColor::Empty { // Make sure the client is not a spectator
                         self.can_move = update.is_p1_turn == (self.current_player == DiskColor::P1);
                     }
                     self.info_message = if update.is_p1_turn {
@@ -197,13 +187,13 @@ impl BoardState {
                         InfoMessage::P1Win
                     };
                 }
-                // update the board
+                // update the board from the updated state
                 self.disks = Disks::from(update);
             }
 
             SimpleMessage(msg) => {
-                // initialization, telling the client which player they are
                 match msg {
+                    // initialization, telling the client which player they are
                     ConnectionProtocol::IS_PLAYER_1 => {
                         self.current_player = DiskColor::P1;
                         self.info_message = InfoMessage::WaitingForOpponent;
@@ -221,26 +211,30 @@ impl BoardState {
                             self.info_message = InfoMessage::P2Turn;
                         }
                     }
+                    // second player joined, first player can now move
                     ConnectionProtocol::SECOND_PLAYER_CONNECTED => {
                         if self.current_player == DiskColor::P1 {
                             self.can_move = true;
                             self.info_message = InfoMessage::P1Turn;
                         }
                     }
+                    // connection terminated or failed to connect
                     ConnectionProtocol::CONNECTION_FAILURE => {
                         self.info_message = InfoMessage::ConnectionFailed;
                     }
+                    // valid move in the form of a column number (this will always be from an AI)
                     ConnectionProtocol::COL_0..=ConnectionProtocol::COL_6 => {
                         self.make_move(msg).unwrap();
                         if !self.disks.check_last_drop_won() {
                             self.can_move = true;
                         }
                     }
+                    // all other messages are invalid
                     _ => {}
                 }
             }
 
-            _ => panic!("Received invalid update message from the task reading from the server."),
+            _ => panic!("Received invalid update message from the task reading from the server or AI."),
         }
     }
 
@@ -250,7 +244,7 @@ impl BoardState {
         self.can_move = false;
         self.info_message = InfoMessage::Connecting;
         self.second_player_extension.init_online(lobby); // set the second player to be online
-        if self.second_player_extension.mode == SecondPlayerExtensionMode::None {
+        if self.second_player_extension.mode == SecondPlayerExtensionMode::None { // failed to open a websocket
             self.info_message = InfoMessage::ConnectionFailed;
         }
     }
@@ -267,8 +261,26 @@ impl BoardState {
         self.second_player_extension.init_survival(ai_type); // set the second player to be an AI
     }
 
+    /// Get the second player extension
     pub fn get_second_player_mode(&self) -> &SecondPlayerExtensionMode {
         &self.second_player_extension.mode
+    }
+
+    ///// PRIVATE METHODS /////
+
+    /// Does everything required for the next player to make a move in the given column.
+    /// Returns Err(_) if the current column if already full
+    fn make_move(&mut self, col: u8) -> Result<(), String> {
+        self.disks.drop_disk(col)?; // Propogate error if move failed
+        let game_won = self.update_can_move_if_won();
+        self.update_player_if_not_online();
+        self.update_game_history(col);
+        self.update_info_message(if game_won {
+            UpdateInfoMessageVariant::GameWon
+        } else {
+            UpdateInfoMessageVariant::None
+        });
+        Ok(())
     }
 
     /// If not online, set the current player to the next player.
@@ -282,14 +294,15 @@ impl BoardState {
     fn update_game_history(&mut self, selected_col: u8) {
         self.game_history[self.num_moves as usize] = selected_col;
         self.num_moves += 1;
-        if self.num_moves == BOARD_WIDTH * BOARD_HEIGHT {
+        if self.num_moves == BOARD_WIDTH * BOARD_HEIGHT { // End of game
             self.can_move = false;
         }
     }
 
+    /// Update the info message based off of the variant of move that was made
     fn update_info_message(&mut self, variant: UpdateInfoMessageVariant) {
         let num_moves = self.disks.get_num_disks();
-        self.info_message = if num_moves == 42 {
+        self.info_message = if num_moves == BOARD_WIDTH * BOARD_HEIGHT {
             InfoMessage::Draw
         } else if num_moves % 2 == 0 {
             if variant == UpdateInfoMessageVariant::GameWon {

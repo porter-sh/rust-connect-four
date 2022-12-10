@@ -80,7 +80,7 @@ impl SecondPlayerExtension {
         self.mode = AI {
             ai: match ai_type {
                 SecondPlayerAIMode::Random => Box::new(RandomAI),
-                SecondPlayerAIMode::Perfect => {
+                SecondPlayerAIMode::BruteForce => {
                     Box::new(BruteForceAI::new(15, self.rerender_board_callback.clone()))
                 }
             },
@@ -88,11 +88,11 @@ impl SecondPlayerExtension {
         };
     }
 
-    // Discards the previous extension, and creates a new survival mode.
+    // Discards the previous extension, and creates a new survival mode AI.
     pub fn init_survival(&mut self, ai_type: SecondPlayerSurvivalAIMode) {
         self.mode = SurvivalMode {
             ai: match ai_type {
-                SecondPlayerSurvivalAIMode::Perfect => {
+                SecondPlayerSurvivalAIMode::BruteForce => {
                     Box::new(BruteForceAI::new(1, self.rerender_board_callback.clone()))
                 }
             },
@@ -102,8 +102,8 @@ impl SecondPlayerExtension {
 
     /// Hands off control to the second player. The board should then wait for
     /// a rerender message with the second player's move.
-    /// Returns Result of whether the second player extension will eventually
-    /// asynchronously call back with a move.
+    /// Returns Result of whether the second player extension was successfully updated,
+    /// and how the second player will eventually return a move.
     pub fn request_move(
         &self,
         selected_col: u8,
@@ -122,7 +122,7 @@ impl SecondPlayerExtension {
                 )?; // Send the server the updated board state / pass off to online opponent
             }
             AI { ai, .. } => {
-                if selected_col != ConnectionProtocol::UNDO && board_state.can_move {
+                if selected_col != ConnectionProtocol::UNDO && board_state.can_move { // Don't run AI if a move was undone
                     let res = ai.request_move(&board_state.disks);
                     return Ok(if res < BOARD_WIDTH {
                         RequestMoveResult::RerenderNow(res) // Propogate up a valid move
@@ -132,7 +132,7 @@ impl SecondPlayerExtension {
                 }
             }
             SurvivalMode { ai, .. } => {
-                if selected_col != ConnectionProtocol::UNDO && board_state.can_move {
+                if selected_col != ConnectionProtocol::UNDO && board_state.can_move { // Don't run AI if a move was undone
                     let res = ai.request_move(&board_state.disks);
                     return Ok(if res < BOARD_WIDTH {
                         RequestMoveResult::RerenderNow(res) // Propogate up a valid move
@@ -215,6 +215,7 @@ impl SecondPlayerExtension {
         send_update_as_col_num: Rc<RefCell<bool>>,
         selected_col: u8,
     ) -> Result<(), String> {
+        // Get the update in the appropriate format
         let update = if *send_update_as_col_num.borrow() {
             SimpleMessage(selected_col)
         } else {

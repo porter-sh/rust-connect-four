@@ -93,7 +93,8 @@ impl Disks {
         return false;
     }
 
-    /// Puts a disk of the given color in the given column
+    /// Puts a disk of the player whose turn it is into the given column
+    /// Returns a result of whether the move was a valid move
     pub fn drop_disk(&mut self, col: u8) -> Result<(), String> {
         if self.is_col_full(col) {
             Err("Cannot drop disk in full column".to_string())

@@ -25,14 +25,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-///// TODO LIST /////
-///
-/// Improve AI efficiency / moves looked ahead
-///
-/// run.md
-///
-/// Deploy the code somewhere
-///
 use yew::prelude::*;
 use yew_router::prelude::*;
 
