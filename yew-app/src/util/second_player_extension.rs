@@ -81,7 +81,7 @@ impl SecondPlayerExtension {
             ai: match ai_type {
                 SecondPlayerAIMode::Random => Box::new(RandomAI),
                 SecondPlayerAIMode::BruteForce => {
-                    Box::new(BruteForceAI::new(15, self.rerender_board_callback.clone()))
+                    Box::new(BruteForceAI::new(20, self.rerender_board_callback.clone()))
                 }
             },
             ai_color: DiskColor::P2,
@@ -192,6 +192,15 @@ impl SecondPlayerExtension {
     pub fn increment_survival_mode_difficulty(&mut self) {
         if let SurvivalMode { ai, .. } = &mut self.mode {
             ai.increment_difficulty();
+        }
+    }
+    /// Gets the difficulty of the SurvivalAI
+    /// Returns None if the SecondPlayerExtension is not a SurvivalMode AI
+    pub fn get_survival_mode_difficulty(&self) -> Option<u8> {
+        if let SurvivalMode { ai, .. } = &self.mode {
+            Some(ai.get_difficulty_level())
+        } else {
+            Option::None
         }
     }
     /// If the SecondPlayerExtension is an AI or SurvivalAI,

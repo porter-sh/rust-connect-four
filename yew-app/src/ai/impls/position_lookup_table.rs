@@ -24,22 +24,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashMap;
-
 use crate::util::disks::Disks;
 
+use std::collections::HashMap;
+
+/// Struct to store previously calculated positions
 pub struct PositionLookupTable {
     table: HashMap<u64, i8>,
 }
 
 impl PositionLookupTable {
+    /// Create a new PositionLookupTable with the specified minimum capacity
     pub fn new(min_capacity: usize) -> Self {
         Self {
             table: HashMap::with_capacity(min_capacity),
         }
     }
 
-    // Insert a pair into the table. DOES NOT check if the key already exists.
+    // Insert a position and corresponding score into the table. DOES NOT check if the key already exists.
     pub fn insert(&mut self, position: &Disks, score: i8) {
         self.table.insert(position.get_key(), score);
     }
@@ -48,8 +50,4 @@ impl PositionLookupTable {
     pub fn get(&self, position: &Disks) -> Option<i8> {
         self.table.get(&position.get_key()).copied()
     }
-
-    // pub fn get_num_entries(&self) -> usize {
-    //     self.table.len()
-    // }
 }

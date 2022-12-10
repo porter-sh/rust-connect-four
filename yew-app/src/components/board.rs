@@ -37,7 +37,8 @@ use std::{cell::RefCell, rc::Rc};
 use yew::{html, Component, Context, Html};
 use yew_router::prelude::*;
 
-pub enum BoardMessages {
+/// Message that can be sent to the board via callback
+pub enum BoardMessage {
     Rerender,
     RerenderUtilityBar,
     RerenderAndUpdateBoard(GameUpdateMessage),
@@ -50,10 +51,10 @@ pub struct Board {
 }
 
 impl Component for Board {
-    type Message = BoardMessages;
+    type Message = BoardMessage;
     type Properties = ();
 
-    /// Creates the Board component and adds a history listener to selectively react to and rerender on route changes
+    /// Creates the Board component
     fn create(ctx: &Context<Self>) -> Self {
         Board::new(ctx)
     }
@@ -61,7 +62,7 @@ impl Component for Board {
     /// Rerender when a message is recieved
     /// All messages sent will be to request a rerender of the entire Board
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        if let BoardMessages::RerenderAndUpdateBoard(msg) = msg {
+        if let BoardMessage::RerenderAndUpdateBoard(msg) = msg {
             self.board
                 .borrow_mut()
                 .update_state_from_second_player_message(msg);
@@ -73,7 +74,7 @@ impl Component for Board {
     /// If in the middle of a game, allows for user input
     /// Renders an UndoButton if playing a supported gamemode
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let rerender_board_callback = ctx.link().callback(|msg: BoardMessages| msg);
+        let rerender_board_callback = ctx.link().callback(|msg: BoardMessage| msg);
         let route = ctx.link().route::<Route>().unwrap_or(Route::Home);
 
         html! {
@@ -102,10 +103,11 @@ impl Component for Board {
 }
 
 impl Board {
+    /// Creates a Board and adds a location listener to selectively react to and rerender on route changes
     pub fn new(ctx: &Context<Board>) -> Self {
         let board_origin = Rc::new(RefCell::new(BoardState::new(
             ctx.link()
-                .callback(|msg: GameUpdateMessage| BoardMessages::RerenderAndUpdateBoard(msg)),
+                .callback(|msg: GameUpdateMessage| BoardMessage::RerenderAndUpdateBoard(msg)),
         )));
         Self {
             board: Rc::clone(&board_origin),
@@ -113,17 +115,19 @@ impl Board {
         }
     }
 
+    /// Create a location listener that will run on_reroute on location change
     fn get_location_handle(ctx: &Context<Board>, board: Rc<RefCell<BoardState>>) -> LocationHandle {
         ctx.link()
             .add_location_listener(ctx.link().callback(move |location: Location| {
                 let board_clone = Rc::clone(&board);
                 // Will rerender the Board
                 Self::on_reroute(board_clone, location);
-                BoardMessages::Rerender
+                BoardMessage::Rerender
             }))
             .unwrap()
     }
 
+    /// Update board state based off of a new location
     fn on_reroute(board: Rc<RefCell<BoardState>>, location: Location) {
         let path = location
             .path()
@@ -134,27 +138,27 @@ impl Board {
                 Route::LocalMultiplayer => {
                     board.borrow_mut().reset(); // Reset the BoardState when starting a new game
                 }
-                Route::OnlineMultiplayer => {
+                Route::OnlineMultiplayer => { // Connect to server with requested lobby
                     let query_string = location.query_str();
                     let lobby = query_string.split("=").collect::<Vec<&str>>()[1];
                     board.borrow_mut().init_online(lobby.to_string());
                 }
-                Route::VersusBot => {
+                Route::VersusBot => { // Create an AI opponent
                     if let Some(ai_route) = AIRoute::recognize(path) {
                         match ai_route {
                             AIRoute::Random => {
                                 board.borrow_mut().init_ai(SecondPlayerAIMode::Random)
                             }
                             AIRoute::BruteForce => {
-                                board.borrow_mut().init_ai(SecondPlayerAIMode::Perfect)
+                                board.borrow_mut().init_ai(SecondPlayerAIMode::BruteForce)
                             }
                             AIRoute::Survival => board
                                 .borrow_mut()
-                                .init_survival(SecondPlayerSurvivalAIMode::Perfect),
+                                .init_survival(SecondPlayerSurvivalAIMode::BruteForce),
                         };
                     }
                 }
-                _ => {
+                _ => { // In some menu
                     let mut board = board.borrow_mut();
                     board.second_player_extension.remove_extension();
                     board.info_message = InfoMessage::NoMessage;

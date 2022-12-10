@@ -58,6 +58,7 @@ impl ConnectionProtocol {
     /// Number of bytes in a message representing a GameUpdate to be sent over a websocket
     pub const MESSAGE_SIZE: usize = 14;
 
+    /// Bitfield masks for encoding and decoding messages
     const IS_NOT_P1_TURN: u64 = 1 << (2 * BOARD_HEIGHT + 1);
     const GAME_WON: u64 = 1 << (3 * BOARD_HEIGHT + 2);
     const UNDO_MOVE_OFFSET: u64 = 4 * BOARD_HEIGHT as u64 + 3;
@@ -125,12 +126,17 @@ impl ConnectionProtocol {
         bytes
     }
 
+    /// Turns a GameUpdate for an undo move into a vector of bytes, which can be sent over a websocket
+    /// The returned Vec has a length of ConnectionProtocol::MESSAGE_SIZE
     pub fn encode_undo_message(mut msg: GameUpdate) -> Vec<u8> {
         msg.mask |= Self::UNDO_MOVE;
         Self::encode_message(msg)
     }
 
+    /// Returns whether bytes encodes for a game update for an undo move
+    /// If bytes.len() != MESSAGE_SIZE, returns false
     pub fn is_undo_move(bytes: &Vec<u8>) -> bool {
+        if bytes.len() != Self::MESSAGE_SIZE { return false; }
         bytes[(Self::MESSAGE_SIZE / 2 + Self::UNDO_MOVE_OFFSET as usize / 8)]
             & (1 << Self::UNDO_MOVE_OFFSET % 8)
             != 0

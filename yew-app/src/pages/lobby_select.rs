@@ -34,7 +34,7 @@ pub fn lobby_select() -> Html {
             <div class={"menu-container"}>
                 <p class="menu-txt">{"Choose Lobby"}</p>
                 <form action={{
-                    if let Ok(Some(base_uri)) = document().base_uri() {
+                    if let Ok(Some(base_uri)) = document().base_uri() { // account for base url from hosting service
                         base_uri + "online-multiplayer/"
                     } else {
                         error!("Error getting base uri");

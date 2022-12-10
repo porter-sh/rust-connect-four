@@ -26,6 +26,7 @@ use crate::{
 };
 use constants::BOARD_WIDTH;
 
+/// AI to randomly choose any open column
 pub struct RandomAI;
 
 impl AI for RandomAI {
@@ -43,7 +44,7 @@ impl AI for RandomAI {
             Some(col) => {
                 return *col;
             }
-            _ => panic!("Fix the random AI, should have returned a value"),
+            _ => 0,
         }
     }
 }

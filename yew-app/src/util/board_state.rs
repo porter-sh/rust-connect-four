@@ -266,6 +266,12 @@ impl BoardState {
         &self.second_player_extension.mode
     }
 
+    /// Gets the difficulty of the SurvivalAI
+    /// Returns None if the SecondPlayerExtension is not a SurvivalMode AI
+    pub fn get_survival_mode_difficulty(&self) -> Option<u8> {
+        self.second_player_extension.get_survival_mode_difficulty()
+    }
+
     ///// PRIVATE METHODS /////
 
     /// Does everything required for the next player to make a move in the given column.

@@ -34,15 +34,15 @@ use yew::{
     classes, html, Callback, Component, Context, Html, KeyboardEvent, MouseEvent, Properties,
 };
 
-use super::board::BoardMessages;
+use super::board::BoardMessage;
 
-/// Properties to allow the UndoButton to interact with other components
+/// Properties to allow the column to interact with the board
 #[derive(Properties, PartialEq)]
 pub struct ColumnProperties {
     pub col_num: u8,                    // Which column of the Board this Column is
     pub disks: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
     pub in_game: bool, // Whether Column should allow players to click it and drop disks
-    pub rerender_board_callback: Callback<BoardMessages>, // Tells the Board component to rerender
+    pub rerender_board_callback: Callback<BoardMessage>, // Tells the Board component to rerender
 }
 
 /// Column component to represent a given column of the Board
@@ -50,7 +50,7 @@ pub struct ColumnProperties {
 /// When not in a game or if the game is won, Column will not accept player input
 pub struct Column {
     onclick: Callback<MouseEvent>, // Callback to drop a disk into the Column
-    global_keyboard_listener: RefCell<Option<EventListener>>,
+    global_keyboard_listener: RefCell<Option<EventListener>>, // Listens for keypresses to drop a disk into a column
 }
 
 /// Allows Column to be used as an HTML component
@@ -58,7 +58,7 @@ impl Component for Column {
     type Message = ();
     type Properties = ColumnProperties;
 
-    /// Creates the Column component and creates the onclick callback
+    /// Creates the Column component and the onclick callback
     fn create(ctx: &Context<Self>) -> Self {
         let col_num = ctx.props().col_num as u8;
         let onclick = {
@@ -82,7 +82,7 @@ impl Component for Column {
         // Tell the entire Board to rerender
         ctx.props()
             .rerender_board_callback
-            .emit(BoardMessages::RerenderUtilityBar);
+            .emit(BoardMessage::RerenderUtilityBar);
         return false; // don't need to rerender, because the board will rerender anyways.
     }
 
@@ -91,16 +91,18 @@ impl Component for Column {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
+                // If player can make a move in this column
                 {if ctx.props().in_game && ctx.props().disks.borrow().can_move
                         && !ctx.props().disks.borrow().disks.is_col_full(ctx.props().col_num) {
                     let onclick = self.onclick.clone();
                     let col_num = ctx.props().col_num;
-                    if self.global_keyboard_listener.borrow().is_none() {
+                    if self.global_keyboard_listener.borrow().is_none() { // Create keyboard listener
                         *self.global_keyboard_listener.borrow_mut() = Some(EventListener::new(
                             &gloo::utils::document(),
                             "keydown",
                             move |event| {
                                 if let Some(key_event) = event.dyn_ref::<KeyboardEvent>() {
+                                    // Make a move if a number key is pressed
                                     if key_event.key() == (col_num + 1).to_string() {
                                         onclick.emit(MouseEvent::new("mousedown").unwrap());
                                     }
@@ -113,11 +115,12 @@ impl Component for Column {
                             0 => classes!("column-btn-leftmost"),
                             6 => classes!("column-btn-rightmost"),
                             _ => classes!("column-btn"),
-                        }}
+                        }} // Make column clickable
                         style={format!("grid-column-start: {}", ctx.props().col_num + 1)}
                         onclick={ self.onclick.clone() }
                     />}
                 } else {
+                    // Player cannot make a move in this column, so stop listening for keyboard input
                     *self.global_keyboard_listener.borrow_mut() = None;
                     html!{}
                 }}
@@ -133,6 +136,7 @@ impl Component for Column {
 }
 
 impl ColumnProperties {
+    // Map a disk to its corresponding SASS class
     fn style_of_disk(&self, row: u8) -> String {
         match self.disks.borrow().disks.get_disk(row, self.col_num) {
             DiskColor::Empty => "disk-empty",

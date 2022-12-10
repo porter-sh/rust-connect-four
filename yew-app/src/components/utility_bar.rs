@@ -23,7 +23,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-use super::board::BoardMessages;
+use super::board::BoardMessage;
 use crate::{
     router::Route,
     util::{
@@ -41,6 +41,7 @@ use SecondPlayerExtensionMode::{None, OnlinePlayer, SurvivalMode, AI};
 
 use gloo::console::error;
 
+/// Message to display to the player
 #[derive(PartialEq, Debug)]
 pub enum InfoMessage {
     P1Turn,
@@ -54,12 +55,15 @@ pub enum InfoMessage {
     NoMessage,
 }
 
+/// Properties to allow the UtilityBar to interact with the board
 #[derive(Properties, PartialEq)]
 pub struct UtilityBarProperties {
     pub board: Rc<RefCell<BoardState>>, // Mutably share BoardState across components
-    pub rerender_board_callback: Callback<BoardMessages>, // Tells the Board component to rerender
+    pub rerender_board_callback: Callback<BoardMessage>, // Tells the Board component to rerender
 }
 
+/// UtilityBar component to allow players to quit games and undo moves
+/// Also displays relevant information to the player
 pub struct UtilityBar {
     undo_callback: Callback<MouseEvent>,
 }
@@ -68,6 +72,7 @@ impl Component for UtilityBar {
     type Message = ();
     type Properties = UtilityBarProperties;
 
+    /// Creates the UtilityBar component and the undo_callback
     fn create(ctx: &Context<Self>) -> Self {
         Self {
             undo_callback: Self::create_undo_move_callback(
@@ -77,13 +82,16 @@ impl Component for UtilityBar {
         }
     }
 
+    /// Renders the UtilityBar
+    /// If in a game, provides a button to quit the game
+    /// If in a game where undo is allowed, provides a button to undo moves
     fn view(&self, ctx: &Context<Self>) -> Html {
         if let Some(navigator) = ctx.link().navigator() {
             if let Some(route) = ctx.link().route::<Route>() {
                 html! {
                     <div class="utility-container">
                         <span class={classes!("utility-left")}>
-                            {match route {
+                            {match route { // Render the Quit Game button if applicable
                                 Route::LocalMultiplayer | Route::VersusBot | Route::OnlineMultiplayer => html! {
                                     <button class="utility-btn"
                                         onclick={
@@ -93,7 +101,7 @@ impl Component for UtilityBar {
                                 _ => html! {},
                             }}
 
-                            {match route {
+                            {match route {// Render the Undo button if applicable
                                 Route::LocalMultiplayer | Route::VersusBot => html! {
                                     if ctx.props().board.borrow().num_moves != 0 {
                                         <button class="utility-btn" onclick={self.undo_callback.clone()}>
@@ -103,10 +111,13 @@ impl Component for UtilityBar {
                                 },
                                 Route::OnlineMultiplayer => {
                                     let disks = ctx.props().board.borrow();
-                                    if (!disks.can_move != (disks.disks.check_last_drop_won() && disks.disks.get_is_p1_turn() == (disks.current_player == DiskColor::P1)))
+                                    if (!disks.can_move
+                                        != (disks.disks.check_last_drop_won() && disks.disks.get_is_p1_turn()
+                                            == (disks.current_player == DiskColor::P1)
+                                        ))
                                         && disks.second_player_extension.undo_enabled_for_online()
-                                        && disks.num_moves > 0
-                                    {
+                                        && disks.num_moves != 0
+                                    { // If the player can currently undo their last move
                                         html! {
                                             <button class="utility-btn" onclick={self.undo_callback.clone()}>
                                                 { "Undo" }
@@ -120,12 +131,25 @@ impl Component for UtilityBar {
                             }}
                         </span>
 
-                        {{
+                        {{ // Diplay info text
                             let (color_class, message) = Self::get_color_and_message_str(ctx.props().board.borrow());
                             html! {
-                                <span class={classes!("utility-right", color_class)}>
-                                    { message }
-                                </span>
+                                <>
+                                    <span class={classes!("utility-right", color_class)}>
+                                        <div class={classes!(color_class)}>{ message }</div>
+                                        {{
+                                            if let Some(difficulty) = ctx.props().board.borrow().get_survival_mode_difficulty(){
+                                                html!{
+                                                    <div style={"padding-top:10px"} class={classes!("utility-text-plain")}>
+                                                        { format!("Difficulty: {}", difficulty) }
+                                                    </div>
+                                                }
+                                            } else {
+                                                html!{}
+                                            }
+                                        }}
+                                    </span>
+                                </>
                             }
                         }}
                     </div>
@@ -142,18 +166,21 @@ impl Component for UtilityBar {
 }
 
 impl UtilityBar {
+    // Creates a callback that undoes the last made move
     fn create_undo_move_callback(
         board: Rc<RefCell<BoardState>>,
-        rerender_board_callback: Callback<BoardMessages>,
+        rerender_board_callback: Callback<BoardMessage>,
     ) -> Callback<MouseEvent> {
         Callback::from(move |_| {
+            // Undo the move
             board.borrow_mut().undo_move_and_handoff_to_second_player();
 
             // Tell the Board to rerender
-            rerender_board_callback.emit(BoardMessages::Rerender);
+            rerender_board_callback.emit(BoardMessage::Rerender);
         })
     }
 
+    // Gets the color and message to display as info text from the current board state
     fn get_color_and_message_str(board: Ref<BoardState>) -> (&'static str, &'static str) {
         match board.info_message {
             InfoMessage::P1Turn => (

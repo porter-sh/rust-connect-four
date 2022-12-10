@@ -79,6 +79,7 @@ struct CLIOptions {
     key: PathBuf,
 }
 
+/// Loads in a certificate stored in a file found at the given path
 #[cfg(feature = "use-certificate")]
 fn load_certs(path: &Path) -> io::Result<Vec<Certificate>> {
     certs(&mut BufReader::new(File::open(path)?))
@@ -86,6 +87,7 @@ fn load_certs(path: &Path) -> io::Result<Vec<Certificate>> {
         .map(|certs| certs.into_iter().map(Certificate).collect())
 }
 
+/// Loads in private keys stored in a file found at the given path
 #[cfg(feature = "use-certificate")]
 fn load_keys(path: &Path) -> io::Result<Vec<PrivateKey>> {
     rsa_private_keys(&mut BufReader::new(File::open(path)?))
@@ -93,6 +95,7 @@ fn load_keys(path: &Path) -> io::Result<Vec<PrivateKey>> {
         .map(|keys| keys.into_iter().map(PrivateKey).collect())
 }
 
+/// Returns an address and TlsAcceptor after reading in the certificate and keys as determined by CLI arguments
 #[cfg(feature = "use-certificate")]
 fn get_address_and_tlsacceptor() -> Result<(SocketAddr, TlsAcceptor), std::io::Error> {
     let cli_options: CLIOptions = argh::from_env();

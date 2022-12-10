@@ -1,6 +1,6 @@
-//! Contains the PerfectAI struct.
-//! This AI uses futures to asynchronously find the best move using the
-//! PerfectAIHelper, which looks ahead several moves into the future.
+//! Contains the BruteForceAI struct.
+//! This AI asynchronously finds the best move using the
+//! BruteForceAIHelper, which looks ahead several moves into the future.
 
 /*
  * This file is part of Rust-Connect-Four
@@ -30,7 +30,7 @@ use super::{
     position_lookup_table::PositionLookupTable,
 };
 use crate::{
-    ai::util::PERFECT_SURVIVAL_DIFFICULTY_INCREMENT,
+    ai::util::BRUTE_FORCE_SURVIVAL_DIFFICULTY_INCREMENT,
     util::{disks::Disks, util::GameUpdateMessage},
 };
 use constants::*;
@@ -39,41 +39,60 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
 
+use std::{
+    cell::RefCell,
+    rc::Rc
+};
+
 use GameUpdateMessage::SimpleMessage;
 
+/// Struct to asynchronously run the BruteForceAIHelper to find the best possible move
 pub struct BruteForceAI {
     pub request_sender: UnboundedSender<GameUpdateMessage>,
+    difficulty_level: Rc<RefCell<u8>>
 }
 
 impl BruteForceAI {
+    /// Creates a BruteForceAI and spawns a computational task to asynchronously run the AI algorithm
     pub fn new(
         max_moves_look_ahead: u8,
         rerender_board_callback: Callback<GameUpdateMessage>,
     ) -> Self {
         let (request_sender, receiver) = mpsc::unbounded_channel();
-        Self::spawn_computation_task(receiver, rerender_board_callback, max_moves_look_ahead);
-        Self { request_sender }
+        let difficulty_level = Rc::new(RefCell::new(1));
+        Self::spawn_computation_task(
+            receiver,
+            rerender_board_callback,
+            max_moves_look_ahead,
+            Rc::clone(&difficulty_level)
+        );
+        Self { request_sender, difficulty_level }
     }
 
+    /// Creates a task with a BruteForceAIHelper to run the AI algorithm
     fn spawn_computation_task(
         mut receiver: UnboundedReceiver<GameUpdateMessage>,
         rerender_board_callback: Callback<GameUpdateMessage>,
         max_moves_look_ahead: u8,
+        difficulty_level: Rc<RefCell<u8>>
     ) {
         spawn_local(async move {
             let mut ai = BruteForceAIHelper::new(max_moves_look_ahead);
+            // Everytime a move is requested from the AI
             while let Some(msg) = receiver.recv().await {
                 match msg {
                     GameUpdateMessage::Disks(disks) => {
                         let ai_move = ai.get_move(&disks).await;
-                        // Make sure updated input has not been sent to this receiver
-                        // if let Err(_) = receiver.try_recv() { // TODO: comment back in if/when AI properly runs in the background
-                        rerender_board_callback.emit(SimpleMessage(ai_move));
+                        // if let Err(_) = receiver.try_recv() {
+                        rerender_board_callback.emit(SimpleMessage(ai_move)); // Make the move
                         // }
                     }
                     GameUpdateMessage::SimpleMessage(inc) => {
+                        // Increase the difficulty
                         if inc == AI_INCREMENT_MESSAGE {
-                            ai.max_moves_look_ahead += PERFECT_SURVIVAL_DIFFICULTY_INCREMENT;
+                            *difficulty_level.borrow_mut() += 1;
+                            ai.max_moves_look_ahead += BRUTE_FORCE_SURVIVAL_DIFFICULTY_INCREMENT;
+                            // Old table may contain invalid scores, now that the AI looks further ahead into the future
                             ai.position_lookup_table = PositionLookupTable::new(LOOKUP_TABLE_SIZE);
                             log!(format!(
                                 "Difficulty increased to {}",
@@ -88,9 +107,8 @@ impl BruteForceAI {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 impl AI for BruteForceAI {
+    /// Give the current disk arrangement to the computational task to find the next move for the AI to make
     fn request_move(&self, disks: &Disks) -> u8 {
         self.request_sender
             .send(GameUpdateMessage::Disks(disks.clone()))
@@ -99,13 +117,15 @@ impl AI for BruteForceAI {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 impl SurvivalAI for BruteForceAI {
     /// Used for survival mode, to make the AI harder each round.
     fn increment_difficulty(&mut self) {
+        // Tell the helper on the computational task to increase the difficulty
         self.request_sender
             .send(SimpleMessage(AI_INCREMENT_MESSAGE))
             .unwrap_or_default();
+    }
+    fn get_difficulty_level(&self) -> u8 {
+        *self.difficulty_level.borrow()
     }
 }

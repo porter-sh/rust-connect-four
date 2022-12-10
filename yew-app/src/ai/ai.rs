@@ -21,11 +21,14 @@
 
 use crate::util::disks::Disks;
 
+/// AI that can play as a second player
 pub trait AI {
     /// Requests the next move, possibly asynchronously. The AI should use a previously provided callback to update the board.
     fn request_move(&self, disks: &Disks) -> u8;
 }
 
+/// AI that can also be the ever increasingly difficult opponent in survival mode
 pub trait SurvivalAI: AI {
     fn increment_difficulty(&mut self);
+    fn get_difficulty_level(&self) -> u8;
 }
