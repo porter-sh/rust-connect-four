@@ -30,12 +30,12 @@ use tokio::{
 
 #[cfg(feature = "use-certificate")]
 use {
-    tokio::io::{AsyncReadExt, AsyncWriteExt},
+    crate::tlsclient::TlsClient,
     tokio_rustls::TlsAcceptor,
     std::str::from_utf8,
 };
-#[cfg(not(feature = "use-certificate"))]
-use tokio_tunstenite::tungstenite::Message::{Binary, Text};
+
+use tokio_tungstenite::tungstenite::Message::{Binary, Text};
 use tokio_tungstenite::tungstenite::error::Error;
 
 #[cfg(not(feature = "use-certificate"))]
@@ -65,8 +65,7 @@ pub async fn handle_connection(
 
     // Accept the websocket request
     #[cfg(feature = "use-certificate")]
-    let mut client = acceptor.accept(incoming).await?;
-    // let (mut reader, mut writer) = split(stream);
+    let mut client = TlsClient::accept(incoming, acceptor).await?;
     #[cfg(not(feature = "use-certificate"))]
     let mut client = tokio_tungstenite::accept_async(incoming).await?;
 
@@ -78,11 +77,6 @@ pub async fn handle_connection(
         .await?;
     #[cfg(not(feature = "cppintegration"))]
     {
-        #[cfg(feature = "use-certificate")]
-        client
-            .write(&[ConnectionProtocol::CONNECTION_SUCCESS, 0])
-            .await?;
-        #[cfg(not(feature = "use-certificate"))]
         client
             .send(Binary(vec![ConnectionProtocol::CONNECTION_SUCCESS, 0]))
             .await?;
@@ -90,25 +84,17 @@ pub async fn handle_connection(
 
     // Get the lobby name from the client and place the client into the desired lobby
     #[cfg(feature = "use-certificate")]
-    let client_res = {
-        let mut msg_buf = [0u8; 16];
-        client.read(&mut msg_buf).await?;
-        from_utf8(&msg_buf).map(|s| s.to_string())
+    let msg = match client.next().await.unwrap_or(Err(Error::AlreadyClosed))? {
+        Binary(binary) => match from_utf8(&binary) {
+            Ok(s) => Text(s.to_string()),
+            _ => Binary(vec![])
+        }
+        _ => Binary(vec![])
     };
     #[cfg(not(feature = "use-certificate"))]
-    let client_res = {
-        match client.next().await.unwrap_or(Err(Error::AlreadyClosed))? {
-            Text(msg) => Ok(msg),
-            _ => Err(())
-        }
-    };
-
-
+    let msg = client.next().await.unwrap_or(Err(Error::AlreadyClosed))?;
     println!("Received msg from client.");
-
-
-
-    if let Ok(lobby) = client_res {
+    if let Text(lobby) = msg {
         println!("Lobby: {}", lobby);
         task::block_in_place(move || {
             let lobby_name = lobby.clone();
