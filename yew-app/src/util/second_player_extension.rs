@@ -59,7 +59,7 @@ impl SecondPlayerExtension {
         }
     }
 
-    /// Remove any second player framework (makes it suitable for local multiplayer)
+    /// Removes any second player framework (makes it suitable for local multiplayer)
     pub fn remove_extension(&mut self) {
         self.mode = None;
     }
